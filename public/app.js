@@ -143,8 +143,8 @@ function updateAbyssCountdown() {
         
         // 🌟 알림 발송 로직 (시간이 지났고, 아직 알림을 안 보냈으며, 알림 권한이 허용된 상태일 때)
         if (diff > -60000 && notifiedAbyssTime !== targetTime && Notification.permission === "granted") {
-            new Notification("🌌 어비스 구멍 발생!", {
-                body: "지금 어비스 구멍이 열렸습니다! 게임에 접속하세요.",
+            new Notification("🌀 어비스 구멍 발생!", {
+                body: "지금 어비스 구멍이 열렸습니다!",
             });
             notifiedAbyssTime = targetTime; // 현재 시간에 대해 알림을 보냈다고 기록
         }
