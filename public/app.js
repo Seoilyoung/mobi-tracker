@@ -1,11 +1,14 @@
+// =========================================================================
+// 🌟 1. Firebase 환경 설정 (본인의 키값으로 유지해주세요)
+// =========================================================================
 const firebaseConfig = {
-    apiKey: "AIzaSyCYs0C4Z-7WFPoZGf2TSWTna9gnLKYTHt8",
-    authDomain: "mobi-checker.firebaseapp.com",
-    projectId: "mobi-checker",
-    storageBucket: "mobi-checker.firebasestorage.app",
-    messagingSenderId: "558569400000",
-    appId: "1:558569400000:web:85f63f71131ab4f0582f25"
-};
+        apiKey: "AIzaSyCYs0C4Z-7WFPoZGf2TSWTna9gnLKYTHt8",
+        authDomain: "mobi-checker.firebaseapp.com",
+        projectId: "mobi-checker",
+        storageBucket: "mobi-checker.firebasestorage.app",
+        messagingSenderId: "558569400000",
+        appId: "1:558569400000:web:85f63f71131ab4f0582f25"
+    };
 
 if (!firebase.apps.length) {
     try { firebase.initializeApp(firebaseConfig); } catch(e) { console.error("Firebase 초기화 에러:", e); }
@@ -55,7 +58,26 @@ let currentlyEditingTask = null;
 let deleteTarget = null;
 let countdownInterval = null;
 
-// --- 🌟 공용 날짜 포맷 함수 (한국어 스타일) ---
+// 🌟 신규: 이미 알림을 보낸 시간을 기억하는 변수 (중복 알림 방지)
+let notifiedAbyssTime = null;
+
+// --- 🌟 알림 권한 요청 함수 ---
+function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        alert("이 브라우저는 알림 기능을 지원하지 않습니다. (크롬, 엣지 등을 사용해주세요)");
+        return;
+    }
+    Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+            alert("🔔 알림이 켜졌습니다! 어비스 구멍 시간이 되면 알려드릴게요.");
+            // 권한을 얻은 즉시 테스트 알림 한 번 보내기
+            new Notification("마비노기 모바일 트래커", { body: "이렇게 알림이 올 거예요!" });
+        } else {
+            alert("알림이 차단되어 있습니다. 브라우저 주소창 왼쪽의 자물쇠 아이콘을 눌러 알림을 허용해주세요.");
+        }
+    });
+}
+
 function formatDateKor(isoStr, includeYear=true) {
     if(!isoStr) return "";
     const d = new Date(isoStr);
@@ -70,7 +92,6 @@ function formatDateKor(isoStr, includeYear=true) {
     return `${includeYear ? y+'년 ' : ''}${m}월 ${day}일(${week}) ${ampm} ${h}시 ${min}분`;
 }
 
-// --- 🌟 어비스 구멍 스케줄 랜더링 함수 ---
 function renderAbyssSchedule() {
     if(!appState || !appState.global || !appState.global.abyss) return;
     const baseTimeStr = appState.global.abyss.baseTime;
@@ -79,7 +100,7 @@ function renderAbyssSchedule() {
     const baseDate = new Date(baseTimeStr);
     if(isNaN(baseDate.getTime())) return;
 
-    const intervalMs = 130500000; // 36시간 15분 (밀리초)
+    const intervalMs = 130500000; 
     const timelineEl = document.getElementById('abyss-timeline');
     timelineEl.innerHTML = '';
 
@@ -88,15 +109,13 @@ function renderAbyssSchedule() {
         times.push(new Date(baseDate.getTime() + i * intervalMs));
     }
 
-    // 현재 시점보다 미래인 '가장 빠른 다음 시간' 찾기
     let nextTime = times.find(t => t.getTime() > Date.now());
-    if(!nextTime) nextTime = times[times.length - 1]; // 모두 과거면 마지막 표시
+    if(!nextTime) nextTime = times[times.length - 1]; 
 
     document.getElementById('abyss-next-time').innerText = formatDateKor(nextTime.toISOString(), false);
     document.getElementById('abyss-countdown').dataset.target = nextTime.getTime();
     updateAbyssCountdown();
 
-    // 5개 타임라인 목록 생성
     times.forEach((t, index) => {
         let isPast = t.getTime() < Date.now();
         let itemClass = index === 0 ? 'base-time' : 'future-time';
@@ -110,22 +129,37 @@ function renderAbyssSchedule() {
     });
 }
 
-// --- 🌟 어비스 실시간 카운트다운 ---
+// --- 🌟 어비스 실시간 카운트다운 (알림 기능 포함) ---
 function updateAbyssCountdown() {
     const el = document.getElementById('abyss-countdown');
     if(!el || !el.dataset.target) return;
-    const diff = parseInt(el.dataset.target) - Date.now();
+    
+    const targetTime = parseInt(el.dataset.target);
+    const diff = targetTime - Date.now();
     
     if(diff <= 0) {
         el.innerText = "발생 중 (또는 지남)";
         el.style.color = "var(--danger)";
-        // 일정 시간이 지나면 UI 갱신을 위해 랜더 함수 다시 호출
+        
+        // 🌟 알림 발송 로직 (시간이 지났고, 아직 알림을 안 보냈으며, 알림 권한이 허용된 상태일 때)
+        if (diff > -60000 && notifiedAbyssTime !== targetTime && Notification.permission === "granted") {
+            new Notification("🌌 어비스 구멍 발생!", {
+                body: "지금 어비스 구멍이 열렸습니다! 게임에 접속하세요.",
+            });
+            notifiedAbyssTime = targetTime; // 현재 시간에 대해 알림을 보냈다고 기록
+        }
+
         if(diff < -60000) renderAbyssSchedule(); 
     } else {
         const h = Math.floor(diff / (1000 * 60 * 60));
         const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         el.innerText = `${h > 0 ? h+'시간 ' : ''}${m}분 남음`;
         el.style.color = "var(--text-muted)";
+        
+        // 미래 시간으로 리셋되면 알림 기록 지우기
+        if (notifiedAbyssTime !== targetTime) {
+            notifiedAbyssTime = null;
+        }
     }
 }
 
@@ -135,14 +169,13 @@ function toggleAbyssSchedule() {
 }
 
 function saveAbyssTime() {
-    const val = document.getElementById('input-abyss').value; // YYYY-MM-DDTHH:mm 포맷
+    const val = document.getElementById('input-abyss').value; 
     if(!val) { alert('시간을 선택해주세요.'); return; }
     
     appState.global.abyss.baseTime = new Date(val).toISOString();
     document.getElementById('add-wrap-abyss').classList.add('hidden');
     saveData(); renderGlobal();
 }
-
 
 function getCharCompletionStatus(char) {
     let dailyTotal = 0, dailyChecked = 0;
@@ -246,7 +279,6 @@ function loadData() {
             if(!appState.global.sharedChecks) appState.global.sharedChecks = {};
             
             if(!appState.global.abyss) appState.global.abyss = { baseTime: "" };
-            // 이전 문자열 버전 데이터 마이그레이션 방어
             if(appState.global.abyss.time && !appState.global.abyss.baseTime) {
                 appState.global.abyss.baseTime = new Date().toISOString(); 
             }
@@ -280,7 +312,6 @@ function loadData() {
         cleanupEmptyTowns();
         checkAndApplyAutoResets(); 
         
-        // 1초 단위 타이머 시작
         if(countdownInterval) clearInterval(countdownInterval);
         countdownInterval = setInterval(updateAbyssCountdown, 1000);
 
@@ -366,7 +397,7 @@ function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
                 <label class="checkbox-label" style="color:var(--danger)" title="당분간 하지 않을 항목은 비활성화 해두세요">
                     <input type="checkbox" id="paused-${fid}" ${isPaused ? 'checked' : ''}> ⏸️ 비활성화
                 </label>
-                <input type="text" id="town-${fid}" placeholder="마을 이름 (선택: 같은 마을끼리 묶임)" value="${vTown}">
+                <input type="text" id="town-${fid}" placeholder="마 마을 이름 (선택: 같은 마을끼리 묶임)" value="${vTown}">
             </div>
             ${inputsHtml}
             <div class="form-actions">
@@ -404,10 +435,8 @@ function getEventStatusClass(periodStr) {
 function renderAll() { renderGlobal(); renderTabs(); renderTaskCards(); renderCharacterTasks(); }
 
 function renderGlobal() {
-    // 어비스 랜더링
     renderAbyssSchedule();
 
-    // 공지사항 렌더링
     const noticeList = document.getElementById('list-notice');
     noticeList.innerHTML = '';
     if(appState.global.notices.length === 0) {
@@ -423,7 +452,6 @@ function renderGlobal() {
         });
     }
 
-    // 이벤트 리스트 렌더링
     const eventList = document.getElementById('list-event');
     eventList.innerHTML = '';
     appState.global.event.forEach(ev => {
@@ -446,7 +474,6 @@ function renderGlobal() {
         `;
     });
 
-    // 공통 메모 렌더링
     const memoList = document.getElementById('list-memo');
     memoList.innerHTML = '';
     appState.global.memo.forEach(memo => {
@@ -744,7 +771,6 @@ function toggleInput(categoryId) {
     if(categoryId === 'memo' || categoryId === 'abyss' || categoryId === 'notice') { 
         wrap.classList.toggle('hidden'); 
         if(!wrap.classList.contains('hidden') && categoryId === 'abyss' && appState.global.abyss.baseTime) {
-            // 저장된 시간이 있다면 입력창에 초기값 세팅 (형식 보정 필요)
             try {
                 const d = new Date(appState.global.abyss.baseTime);
                 const localStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,16);
