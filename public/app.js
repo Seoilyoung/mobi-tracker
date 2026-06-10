@@ -57,23 +57,20 @@ let selectedEventDays = [];
 let currentlyEditingTask = null; 
 let deleteTarget = null;
 let countdownInterval = null;
-
-// 🌟 신규: 이미 알림을 보낸 시간을 기억하는 변수 (중복 알림 방지)
 let notifiedAbyssTime = null;
 
-// --- 🌟 알림 권한 요청 함수 ---
+// --- 🌟 알림 권한 요청 ---
 function requestNotificationPermission() {
     if (!("Notification" in window)) {
-        alert("이 브라우저는 알림 기능을 지원하지 않습니다. (크롬, 엣지 등을 사용해주세요)");
+        alert("이 브라우저는 알림 기능을 지원하지 않습니다.");
         return;
     }
     Notification.requestPermission().then(permission => {
         if (permission === "granted") {
             alert("🔔 알림이 켜졌습니다! 어비스 구멍 시간이 되면 알려드릴게요.");
-            // 권한을 얻은 즉시 테스트 알림 한 번 보내기
             new Notification("마비노기 모바일 트래커", { body: "이렇게 알림이 올 거예요!" });
         } else {
-            alert("알림이 차단되어 있습니다. 브라우저 주소창 왼쪽의 자물쇠 아이콘을 눌러 알림을 허용해주세요.");
+            alert("알림이 차단되어 있습니다. 브라우저 주소창 왼쪽 자물쇠 아이콘에서 알림을 허용해주세요.");
         }
     });
 }
@@ -92,6 +89,7 @@ function formatDateKor(isoStr, includeYear=true) {
     return `${includeYear ? y+'년 ' : ''}${m}월 ${day}일(${week}) ${ampm} ${h}시 ${min}분`;
 }
 
+// --- 🌟 어비스 구멍 스케줄 ---
 function renderAbyssSchedule() {
     if(!appState || !appState.global || !appState.global.abyss) return;
     const baseTimeStr = appState.global.abyss.baseTime;
@@ -129,7 +127,6 @@ function renderAbyssSchedule() {
     });
 }
 
-// --- 🌟 어비스 실시간 카운트다운 (알림 기능 포함) ---
 function updateAbyssCountdown() {
     const el = document.getElementById('abyss-countdown');
     if(!el || !el.dataset.target) return;
@@ -141,12 +138,11 @@ function updateAbyssCountdown() {
         el.innerText = "발생 중 (또는 지남)";
         el.style.color = "var(--danger)";
         
-        // 🌟 알림 발송 로직 (시간이 지났고, 아직 알림을 안 보냈으며, 알림 권한이 허용된 상태일 때)
         if (diff > -60000 && notifiedAbyssTime !== targetTime && Notification.permission === "granted") {
-            new Notification("🌀 어비스 구멍 발생!", {
-                body: "지금 어비스 구멍이 열렸습니다!",
+            new Notification("🌌 어비스 구멍 발생!", {
+                body: "지금 어비스 구멍이 열렸습니다! 게임에 접속하세요."
             });
-            notifiedAbyssTime = targetTime; // 현재 시간에 대해 알림을 보냈다고 기록
+            notifiedAbyssTime = targetTime; 
         }
 
         if(diff < -60000) renderAbyssSchedule(); 
@@ -156,7 +152,6 @@ function updateAbyssCountdown() {
         el.innerText = `${h > 0 ? h+'시간 ' : ''}${m}분 남음`;
         el.style.color = "var(--text-muted)";
         
-        // 미래 시간으로 리셋되면 알림 기록 지우기
         if (notifiedAbyssTime !== targetTime) {
             notifiedAbyssTime = null;
         }
@@ -164,8 +159,7 @@ function updateAbyssCountdown() {
 }
 
 function toggleAbyssSchedule() {
-    const tl = document.getElementById('abyss-timeline');
-    tl.classList.toggle('hidden');
+    document.getElementById('abyss-timeline').classList.toggle('hidden');
 }
 
 function saveAbyssTime() {
@@ -177,6 +171,7 @@ function saveAbyssTime() {
     saveData(); renderGlobal();
 }
 
+// --- 🌟 상태 및 진행도 ---
 function getCharCompletionStatus(char) {
     let dailyTotal = 0, dailyChecked = 0;
     let weeklyTotal = 0, weeklyChecked = 0;
@@ -188,7 +183,8 @@ function getCharCompletionStatus(char) {
             appState.global.event.forEach(ev => {
                 const status = getEventStatusClass(ev.period);
                 const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(char.id);
-                if (status !== 'ev-status-ended' && ev.days && ev.days.includes(todayDay) && isForThisChar) {
+                // 진행 중인 이벤트만 반영
+                if (status === 'ev-status-ongoing' && ev.days && ev.days.includes(todayDay) && isForThisChar) {
                     const tid = `evtask-${ev.id}`;
                     dailyTotal++;
                     if (!!char.checks[tid]) dailyChecked++;
@@ -268,6 +264,7 @@ function checkAndApplyAutoResets() {
 
 setInterval(() => { if (appState) { checkAndApplyAutoResets(); renderTabs(); renderCharacterTasks(); } }, 60000);
 
+// --- 🌟 데이터 로드 및 저장 ---
 function loadData() {
     docRef.onSnapshot((doc) => {
         if (isLocalUpdate) { isLocalUpdate = false; return; }
@@ -284,7 +281,6 @@ function loadData() {
             }
 
             if(!appState.global.notices) appState.global.notices = [];
-            
             appState.global.event.forEach(ev => { if(!ev.targetChars) ev.targetChars = ['all']; });
 
             let pastOrder = 1000;
@@ -338,6 +334,7 @@ function cleanupEmptyTowns() {
     });
 }
 
+// --- 🌟 폼 렌더링 도구 ---
 function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
     const isTrade = categoryId.includes('trade');
     const tid = task ? task.id : 'new';
@@ -397,7 +394,7 @@ function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
                 <label class="checkbox-label" style="color:var(--danger)" title="당분간 하지 않을 항목은 비활성화 해두세요">
                     <input type="checkbox" id="paused-${fid}" ${isPaused ? 'checked' : ''}> ⏸️ 비활성화
                 </label>
-                <input type="text" id="town-${fid}" placeholder="마 마을 이름 (선택: 같은 마을끼리 묶임)" value="${vTown}">
+                <input type="text" id="town-${fid}" placeholder="마을 이름 (선택: 같은 마을끼리 묶임)" value="${vTown}">
             </div>
             ${inputsHtml}
             <div class="form-actions">
@@ -432,6 +429,7 @@ function getEventStatusClass(periodStr) {
     } catch(e) { return 'ev-status-ongoing'; }
 }
 
+// --- 🌟 전체 렌더링 ---
 function renderAll() { renderGlobal(); renderTabs(); renderTaskCards(); renderCharacterTasks(); }
 
 function renderGlobal() {
@@ -564,7 +562,8 @@ function renderCharacterTasks() {
             appState.global.event.forEach(ev => {
                 const status = getEventStatusClass(ev.period);
                 const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(activeChar.id);
-                if (status !== 'ev-status-ended' && ev.days && ev.days.includes(todayDay) && isForThisChar) {
+                // 진행 중인 이벤트만 일일 숙제 목록에 노출
+                if (status === 'ev-status-ongoing' && ev.days && ev.days.includes(todayDay) && isForThisChar) {
                     blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${ev.title}`, type: 'normal', isEventInject: true } });
                 }
             });
@@ -651,6 +650,7 @@ function renderTaskItemStr(categoryId, task, activeChar) {
     `;
 }
 
+// --- 🌟 기타 유틸리티 함수 ---
 function cycleTownColor(categoryId, townName) {
     if (!appState.global.towns[categoryId][townName]) return;
     let curColor = appState.global.towns[categoryId][townName].color;
@@ -733,37 +733,122 @@ document.addEventListener('click', function(event) {
     if (currentlyEditingTask) cancelEdit(currentlyEditingTask.categoryId, currentlyEditingTask.taskId);
 });
 
-function toggleEventInput() {
-    const wrap = document.getElementById(`add-wrap-event`);
-    if(wrap.classList.contains('hidden')) {
-        wrap.classList.remove('hidden');
-        let chipsHtml = `<div class="target-chars-wrap" id="chips-event-new">`;
-        appState.characters.forEach(c => { chipsHtml += `<div class="char-chip selected" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`; });
-        chipsHtml += `</div>`;
-
-        wrap.innerHTML = `
-            <div class="inline-form-box">
-                ${chipsHtml}
-                <div class="form-row">
-                    <input type="text" id="input-ev-period" placeholder="기간 (06.01 ~ 06.30)" style="max-width: 150px;">
-                    <input type="text" id="input-ev-title" placeholder="이벤트 제목">
-                </div>
-                <div class="form-row day-selector" id="event-day-selector">
-                    ${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}
-                </div>
-                <div class="form-row">
-                    <input type="text" id="input-ev-memo1" placeholder="메모 1">
-                    <input type="text" id="input-ev-memo2" placeholder="메모 2">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('add-wrap-event').classList.add('hidden')">취소</button>
-                    <button type="button" class="btn-submit" onclick="submitEvent()">추가</button>
-                </div>
-            </div>`;
-        setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
-    } else { wrap.classList.add('hidden'); }
+// --- 🌟 이벤트 관리 함수 ---
+function closeEventForm() {
+    document.getElementById('add-wrap-event').classList.add('hidden');
+    resetEventForm();
 }
 
+function toggleEventInput() {
+    const wrap = document.getElementById(`add-wrap-event`);
+    
+    if (!wrap.classList.contains('hidden') && editingEventId === null) {
+        closeEventForm();
+        return;
+    }
+
+    resetEventForm();
+    wrap.classList.remove('hidden');
+    
+    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-new">`;
+    appState.characters.forEach(c => { chipsHtml += `<div class="char-chip selected" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`; });
+    chipsHtml += `</div>`;
+
+    wrap.innerHTML = `
+        <div class="inline-form-box">
+            ${chipsHtml}
+            <div class="form-row">
+                <input type="text" id="input-ev-period" placeholder="기간 (06.01 ~ 06.30)" style="max-width: 150px;">
+                <input type="text" id="input-ev-title" placeholder="이벤트 제목">
+            </div>
+            <div class="form-row day-selector" id="event-day-selector">
+                ${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}
+            </div>
+            <div class="form-row">
+                <input type="text" id="input-ev-memo1" placeholder="메모 1">
+                <input type="text" id="input-ev-memo2" placeholder="메모 2">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button>
+                <button type="button" class="btn-submit" onclick="submitEvent()">추가</button>
+            </div>
+        </div>`;
+    setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
+}
+
+function editEvent(id) {
+    const ev = appState.global.event.find(e => e.id === id);
+    if (!ev) return;
+    
+    const wrap = document.getElementById(`add-wrap-event`);
+    wrap.classList.remove('hidden');
+    
+    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-${id}">`;
+    appState.characters.forEach(c => { 
+        let isSelected = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(c.id);
+        chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`; 
+    });
+    chipsHtml += `</div>`;
+
+    wrap.innerHTML = `
+        <div class="inline-form-box">
+            ${chipsHtml}
+            <div class="form-row">
+                <input type="text" id="input-ev-period" placeholder="기간 (06.01 ~ 06.30)" style="max-width: 150px;" value="${ev.period || ''}">
+                <input type="text" id="input-ev-title" placeholder="이벤트 제목" value="${ev.title || ''}">
+            </div>
+            <div class="form-row day-selector" id="event-day-selector">
+                ${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn ${ev.days && ev.days.includes(d) ? 'selected' : ''}" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}
+            </div>
+            <div class="form-row">
+                <input type="text" id="input-ev-memo1" placeholder="메모 1" value="${ev.memo1 || ''}">
+                <input type="text" id="input-ev-memo2" placeholder="메모 2" value="${ev.memo2 || ''}">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button>
+                <button type="button" class="btn-submit edit" id="btn-submit-event" onclick="submitEvent()">수정</button>
+            </div>
+        </div>`;
+    
+    selectedEventDays = [...(ev.days || [])];
+    editingEventId = id; 
+    setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
+}
+
+function submitEvent() {
+    const period = document.getElementById('input-ev-period').value.trim(); 
+    const title = document.getElementById('input-ev-title').value.trim();
+    const memo1 = document.getElementById('input-ev-memo1').value.trim(); 
+    const memo2 = document.getElementById('input-ev-memo2').value.trim();
+    if (!title) { alert('이벤트 제목은 필수입니다.'); return; }
+    const days = [...selectedEventDays];
+
+    const tid = editingEventId || 'new';
+    const chipWrap = document.getElementById(`chips-event-${tid}`);
+    const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId);
+    if (selectedCharIds.length === 0) { alert('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
+    const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
+
+    if (editingEventId) {
+        const evIndex = appState.global.event.findIndex(e => e.id === editingEventId);
+        if (evIndex > -1) { appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, days, memo1, memo2, targetChars }; }
+    } else { 
+        appState.global.event.push({ id: genId(), period, title, days, memo1, memo2, targetChars }); 
+    }
+    
+    closeEventForm();
+    saveData(); renderTabs(); renderGlobal(); renderCharacterTasks(); 
+}
+
+function resetEventForm() { editingEventId = null; selectedEventDays = []; }
+
+function toggleEventDay(btn, day) {
+    btn.classList.toggle('selected');
+    if (btn.classList.contains('selected')) { if (!selectedEventDays.includes(day)) selectedEventDays.push(day); } 
+    else { selectedEventDays = selectedEventDays.filter(d => d !== day); }
+}
+
+// --- 🌟 인풋 토글 및 수정 관련 ---
 function toggleInput(categoryId) {
     const wrap = document.getElementById(`add-wrap-${categoryId}`);
     if(!wrap) return;
@@ -871,76 +956,7 @@ function toggleTask(taskId, isChecked, isShared) {
     saveData(); renderTabs(); renderCharacterTasks();
 }
 
-function editEvent(id) {
-    const ev = appState.global.event.find(e => e.id === id);
-    if (!ev) return;
-    
-    const wrap = document.getElementById(`add-wrap-event`);
-    wrap.classList.remove('hidden');
-    
-    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-${id}">`;
-    appState.characters.forEach(c => { 
-        let isSelected = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(c.id);
-        chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`; 
-    });
-    chipsHtml += `</div>`;
-
-    wrap.innerHTML = `
-        <div class="inline-form-box">
-            ${chipsHtml}
-            <div class="form-row">
-                <input type="text" id="input-ev-period" placeholder="기간 (06.01 ~ 06.30)" style="max-width: 150px;" value="${ev.period || ''}">
-                <input type="text" id="input-ev-title" placeholder="이벤트 제목" value="${ev.title || ''}">
-            </div>
-            <div class="form-row day-selector" id="event-day-selector">
-                ${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn ${ev.days && ev.days.includes(d) ? 'selected' : ''}" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}
-            </div>
-            <div class="form-row">
-                <input type="text" id="input-ev-memo1" placeholder="메모 1" value="${ev.memo1 || ''}">
-                <input type="text" id="input-ev-memo2" placeholder="메모 2" value="${ev.memo2 || ''}">
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('add-wrap-event').classList.add('hidden')">취소</button>
-                <button type="button" class="btn-submit edit" id="btn-submit-event" onclick="submitEvent()">수정</button>
-            </div>
-        </div>`;
-    
-    selectedEventDays = [...(ev.days || [])];
-    editingEventId = id; 
-    setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
-}
-
-function resetEventForm() { editingEventId = null; selectedEventDays = []; }
-
-function submitEvent() {
-    const period = document.getElementById('input-ev-period').value.trim(); 
-    const title = document.getElementById('input-ev-title').value.trim();
-    const memo1 = document.getElementById('input-ev-memo1').value.trim(); 
-    const memo2 = document.getElementById('input-ev-memo2').value.trim();
-    if (!title) { alert('이벤트 제목은 필수입니다.'); return; }
-    const days = [...selectedEventDays];
-
-    const tid = editingEventId || 'new';
-    const chipWrap = document.getElementById(`chips-event-${tid}`);
-    const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId);
-    if (selectedCharIds.length === 0) { alert('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
-    const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
-
-    if (editingEventId) {
-        const evIndex = appState.global.event.findIndex(e => e.id === editingEventId);
-        if (evIndex > -1) { appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, days, memo1, memo2, targetChars }; }
-    } else { 
-        appState.global.event.push({ id: genId(), period, title, days, memo1, memo2, targetChars }); 
-    }
-    document.getElementById('add-wrap-event').classList.add('hidden'); saveData(); renderTabs(); renderGlobal(); renderCharacterTasks(); 
-}
-
-function toggleEventDay(btn, day) {
-    btn.classList.toggle('selected');
-    if (btn.classList.contains('selected')) { if (!selectedEventDays.includes(day)) selectedEventDays.push(day); } 
-    else { selectedEventDays = selectedEventDays.filter(d => d !== day); }
-}
-
+// --- 🌟 공지사항 및 메모 관련 ---
 function addNotice() {
     const title = document.getElementById('input-notice-title').value.trim();
     let url = document.getElementById('input-notice-url').value.trim();
@@ -956,10 +972,12 @@ function deleteNotice(id) {
     appState.global.notices = appState.global.notices.filter(n => n.id !== id); saveData(); renderGlobal();
 }
 
+function addMemo() { const val = document.getElementById('input-memo').value.trim(); if (!val) return; appState.global.memo.push({ id: genId(), label: val }); document.getElementById('input-memo').value = ''; document.getElementById('add-wrap-memo').classList.add('hidden'); saveData(); renderGlobal(); }
+
+// --- 🌟 기타 전역 및 캐릭터 함수 ---
 function switchTab(charId) { appState.activeTabId = charId; currentlyEditingTask = null; saveData(); renderTabs(); renderCharacterTasks(); }
 function addNewCharacter() { const name = prompt("새 캐릭터의 이름을 입력하세요:"); if (name) { appState.characters.push({ id: genId(), name: name, checks: {}, customTasks: { 'daily': [], 'daily-trade': [], 'weekly': [], 'weekly-trade': [] }, hiddenTasks: [] }); appState.activeTabId = appState.characters[appState.characters.length-1].id; saveData(); renderAll(); } }
 function renameCharacter(charId) { const char = appState.characters.find(c => c.id === charId); if (!char) return; const newName = prompt("캐릭터의 새 닉네임을 입력하세요:", char.name); if (newName !== null && newName.trim() !== "") { char.name = newName.trim(); saveData(); renderTabs(); } }
-function addMemo() { const val = document.getElementById('input-memo').value.trim(); if (!val) return; appState.global.memo.push({ id: genId(), label: val }); document.getElementById('input-memo').value = ''; document.getElementById('add-wrap-memo').classList.add('hidden'); saveData(); renderGlobal(); }
 
 function deleteGlobal(type, id) { if (!confirm("삭제하시겠습니까?")) return; appState.global[type] = appState.global[type].filter(i => i.id !== id); saveData(); renderTabs(); renderGlobal(); renderCharacterTasks(); }
 function openDeleteModal(category, taskId, isGlobal) { deleteTarget = { category, taskId, isGlobal }; document.getElementById('delete-modal').classList.add('show'); }
