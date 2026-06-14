@@ -1,6 +1,15 @@
 // ==========================================
-// 1. 공통 UI & 알림 제어
+// 1. 공통 UI, 알림 & 보안 제어
 // ==========================================
+// 🛡️ XSS 방어용 텍스트 변환 함수 (HTML 태그 무력화)
+function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>"']/g, function(match) {
+        const escape = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return escape[match];
+    });
+}
+
 function initDarkMode() {
     const savedTheme = localStorage.getItem('theme');
     const btn = document.getElementById('theme-toggle');
@@ -18,7 +27,7 @@ document.addEventListener('DOMContentLoaded', initDarkMode);
 function showToast(msg) {
     const container = document.getElementById('toast-container');
     if (!container) return;
-    const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg;
+    const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; // innerText는 자동 이스케이프 됨
     container.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
@@ -51,7 +60,6 @@ function renderAbyssSchedule() {
     document.getElementById('abyss-countdown').dataset.target = nextTime.getTime();
     updateAbyssCountdown();
 
-    // DOM 누적 최적화
     let timelineHtml = '';
     times.forEach((t, index) => {
         let isPast = t.getTime() < Date.now();
@@ -83,29 +91,28 @@ function updateAbyssCountdown() {
 function renderGlobal() {
     renderAbyssSchedule(); 
     
-    // DOM 최적화: 공지사항
     let noticeHtml = '';
     if (appState.global.notices.length === 0) { 
         noticeHtml = `<li class="task-item" style="color:var(--text-muted); justify-content:center; font-size:0.9rem; border:none;">등록된 공지사항이 없습니다.</li>`; 
     } else {
         appState.global.notices.forEach(n => {
-            let titleHTML = n.url ? `<a href="${n.url}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">• ${n.title} 🔗</a>` : `<span>• ${n.title}</span>`;
+            const safeTitle = escapeHTML(n.title);
+            const safeUrl = escapeHTML(n.url);
+            let titleHTML = n.url ? `<a href="${safeUrl}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">• ${safeTitle} 🔗</a>` : `<span>• ${safeTitle}</span>`;
             noticeHtml += `<li class="task-item" style="padding: 6px 0;"><div class="task-content" style="font-size:0.95rem;">${titleHTML}</div><button class="icon-btn delete-btn" onclick="deleteNotice('${n.id}')">✕</button></li>`;
         });
     }
     document.getElementById('list-notice').innerHTML = noticeHtml;
     
-    // DOM 최적화: 이벤트
     let eventHtml = '';
     appState.global.event.forEach(ev => {
         const statusClass = getEventStatusClass(ev.period); const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
-        eventHtml += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${ev.period}</span><span class="col-title">${ev.title}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${ev.memo1}</span><span class="col-memo2">${ev.memo2}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
+        eventHtml += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${escapeHTML(ev.period)}</span><span class="col-title">${escapeHTML(ev.title)}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${escapeHTML(ev.memo1)}</span><span class="col-memo2">${escapeHTML(ev.memo2)}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
     });
     document.getElementById('list-event').innerHTML = eventHtml;
     
-    // DOM 최적화: 메모
     let memoHtml = '';
-    appState.global.memo.forEach(memo => { memoHtml += `<li class="task-item"><div class="task-content"><span>• ${memo.label}</span></div><button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button></li>`; });
+    appState.global.memo.forEach(memo => { memoHtml += `<li class="task-item"><div class="task-content"><span>• ${escapeHTML(memo.label)}</span></div><button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button></li>`; });
     document.getElementById('list-memo').innerHTML = memoHtml;
 }
 
@@ -114,13 +121,13 @@ function renderGlobal() {
 // ==========================================
 function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
     const isTrade = categoryId.includes('trade'); const tid = task ? task.id : 'new'; const fid = `${categoryId}-${tid}`; 
-    const vTown = task && task.town ? task.town : ''; const vNpc = task && task.npc ? task.npc : ''; const vLabel = task && !isTrade ? task.label : ''; const vFrom = task && isTrade ? task.fromItem : ''; const vFromQ = task && isTrade ? task.fromQty : ''; const vTo = task && isTrade ? task.toItem : ''; const vToQ = task && isTrade ? task.toQty : '';
+    const vTown = task && task.town ? escapeHTML(task.town) : ''; const vNpc = task && task.npc ? escapeHTML(task.npc) : ''; const vLabel = task && !isTrade ? escapeHTML(task.label) : ''; const vFrom = task && isTrade ? escapeHTML(task.fromItem) : ''; const vFromQ = task && isTrade ? task.fromQty : ''; const vTo = task && isTrade ? escapeHTML(task.toItem) : ''; const vToQ = task && isTrade ? task.toQty : '';
     const isIndiv = task ? !task.isShared : true; const isPaused = task ? !!task.isPaused : false;
     
     let chipsHtml = `<div class="target-chars-wrap" id="chips-${fid}">`;
     appState.characters.forEach(c => {
         let isSelected = true; if (task) { if (isGlobal) { if (c.hiddenTasks && c.hiddenTasks.includes(tid)) isSelected = false; } else { if (!c.customTasks[categoryId].some(t => t.id === tid)) isSelected = false; } }
-        chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`;
+        chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${escapeHTML(c.name)}</div>`;
     });
     chipsHtml += `</div>`;
     
@@ -136,7 +143,7 @@ function renderTabs() {
         const btn = document.createElement('button'); const isActive = appState.activeTabId === char.id; btn.className = `tab-btn ${isActive ? 'active' : ''}`;
         if (isActive) btn.title = "한 번 더 누르면 설정을 엽니다";
         const status = getCharCompletionStatus(char); let statusClass = status === 'red' ? 'status-red' : status === 'yellow' ? 'status-yellow' : 'status-green';
-        btn.innerHTML = `${char.name} <span class="status-check ${statusClass}">✔</span>`; btn.dataset.charId = char.id; btn.onclick = () => { isActive ? manageCharacter(char.id) : switchTab(char.id); }; container.appendChild(btn);
+        btn.innerHTML = `${escapeHTML(char.name)} <span class="status-check ${statusClass}">✔</span>`; btn.dataset.charId = char.id; btn.onclick = () => { isActive ? manageCharacter(char.id) : switchTab(char.id); }; container.appendChild(btn);
     });
     const addBtn = document.createElement('button'); addBtn.className = 'tab-btn tab-add-btn'; addBtn.innerText = '+ 캐릭 추가'; addBtn.onclick = addNewCharacter; container.appendChild(addBtn);
     const hint = document.createElement('span'); hint.className = 'tab-hint'; hint.innerHTML = '💡 활성화된 탭 한 번 더 클릭 시 설정'; container.appendChild(hint);
@@ -155,15 +162,11 @@ function renderAll() { renderGlobal(); renderTabs(); renderTaskCards(); renderCh
 
 function renderTaskCards() {
     const container = document.getElementById('character-content'); 
-    
-    // DOM 최적화: 뼈대 먼저 생성
     let cardsHtml = '';
     categoriesInfo.forEach(cat => {
         cardsHtml += `<div class="card"><div class="card-header"><h2>${cat.title}</h2><div class="toggle-group"><button class="toggle-btn" onclick="toggleCompleted('${cat.id}')" id="btn-toggle-${cat.id}" title="완료 항목 보기/숨기기">∨</button><button class="toggle-btn" onclick="toggleInput('${cat.id}')" title="항목 열기">＋</button></div></div><ul class="task-list" id="list-${cat.id}"></ul><div class="add-wrap hidden" id="add-wrap-${cat.id}"></div></div>`;
     });
     container.innerHTML = cardsHtml;
-
-    // 이후 내부 입력 폼 삽입
     categoriesInfo.forEach(cat => { document.getElementById(`add-wrap-${cat.id}`).innerHTML = getTaskFormHTML(cat.id); });
 }
 
@@ -187,13 +190,12 @@ function renderCharacterTasks() {
             });
         }
         
-        // DOM 최적화: 리스트 누적
         let listHtml = '';
         blocks.forEach(block => {
             if (block.type === 'town') {
                 let hasVisibleTasks = block.tasks.some(t => { if (currentlyEditingTask && currentlyEditingTask.taskId === t.id) return true; let isChecked = t.isShared ? !!appState.global.sharedChecks[t.id] : !!activeChar.checks[t.id]; return !((isChecked && !uiState.showCompleted[cat.id]) || (t.isPaused && !uiState.showCompleted[cat.id])); });
                 if (!hasVisibleTasks) return; 
-                listHtml += `<div class="town-group-header" style="border-left-color: ${block.color};"><div class="town-title" style="color: ${block.color};">📍 ${block.name}</div><div class="action-btns"><button class="icon-btn" onclick="cycleTownColor('${cat.id}', '${block.name}')" title="색상 변경">🎨</button><button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'up')" title="위로">▲</button><button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'down')" title="아래로">▼</button></div></div><ul class="town-task-list">`;
+                listHtml += `<div class="town-group-header" style="border-left-color: ${block.color};"><div class="town-title" style="color: ${block.color};">📍 ${escapeHTML(block.name)}</div><div class="action-btns"><button class="icon-btn" onclick="cycleTownColor('${cat.id}', '${block.name}')" title="색상 변경">🎨</button><button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'up')" title="위로">▲</button><button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'down')" title="아래로">▼</button></div></div><ul class="town-task-list">`;
                 block.tasks.forEach(t => listHtml += renderTaskItemStr(cat.id, t, activeChar)); 
                 listHtml += `</ul>`; 
             } else { listHtml += renderTaskItemStr(cat.id, block.task, activeChar); }
@@ -212,9 +214,9 @@ function renderTaskItemStr(categoryId, task, activeChar) {
     let labelHTML = '';
     
     if (task.type === 'trade') {
-        let npcHTML = task.npc ? `<div class="task-npc-label">👤 ${task.npc}</div>` : '';
-        labelHTML = `<div class="trade-label-wrap">${npcHTML}<div class="trade-grid"><span class="trade-item from-item">${task.fromItem}</span><span class="trade-qty from-qty">${task.fromQty}개</span><span class="trade-arrow">→</span><span class="trade-item to-item">${task.toItem}</span><span class="trade-qty to-qty">${task.toQty}개</span></div></div>`;
-    } else { labelHTML = `<label style="flex:1; cursor:pointer; ${task.isEventInject ? 'color: var(--primary); font-weight: bold;' : ''}" for="${task.id}">${task.label}</label>`; }
+        let npcHTML = task.npc ? `<div class="task-npc-label">👤 ${escapeHTML(task.npc)}</div>` : '';
+        labelHTML = `<div class="trade-label-wrap">${npcHTML}<div class="trade-grid"><span class="trade-item from-item">${escapeHTML(task.fromItem)}</span><span class="trade-qty from-qty">${task.fromQty}개</span><span class="trade-arrow">→</span><span class="trade-item to-item">${escapeHTML(task.toItem)}</span><span class="trade-qty to-qty">${task.toQty}개</span></div></div>`;
+    } else { labelHTML = `<label style="flex:1; cursor:pointer; ${task.isEventInject ? 'color: var(--primary); font-weight: bold;' : ''}" for="${task.id}">${escapeHTML(task.label)}</label>`; }
     
     let actionBtnsHTML = task.isEventInject ? `<div style="width: 50px; margin-left: 10px;"></div>` : `<div class="action-btns"><button class="icon-btn" onclick="editTask('${categoryId}', '${task.id}', ${task.isGlobal})" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="openDeleteModal('${categoryId}', '${task.id}', ${task.isGlobal})" title="삭제">✕</button></div>`;
         
