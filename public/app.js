@@ -91,7 +91,29 @@ function toggleTask(taskId, isChecked, isShared, categoryId) {
         const li = checkbox.closest('.task-item'); 
         if (li) { 
             isChecked ? li.classList.add('checked') : li.classList.remove('checked'); 
-            if (!uiState.showCompleted[categoryId]) { isChecked ? li.classList.add('hidden-task') : li.classList.remove('hidden-task'); } 
+            
+            // 1. 해당 숙제 한 줄(item) 숨기기/보이기
+            if (!uiState.showCompleted[categoryId]) { 
+                isChecked ? li.classList.add('hidden-task') : li.classList.remove('hidden-task'); 
+            } 
+            
+            // 🌟 [추가됨] 2. 해당 숙제가 속한 마을(그룹) 헤더 숨김 처리 로직
+            const subList = li.closest('.town-task-list'); // 이 숙제가 마을 리스트에 포함되어 있나?
+            if (subList) {
+                const header = subList.previousElementSibling; // 바로 위에 있는 마을 헤더를 찾음
+                if (header && header.classList.contains('town-group-header')) {
+                    // 이 마을 안에 현재 화면에 보이는 숙제(`.hidden-task` 클래스가 없는 숙제)가 몇 개인지 확인
+                    const visibleTasks = subList.querySelectorAll('.task-item:not(.hidden-task)');
+                    
+                    if (visibleTasks.length === 0) {
+                        // 보이는 숙제가 하나도 없다면 마을 헤더도 숨김
+                        header.classList.add('hidden');
+                    } else {
+                        // 보이는 숙제가 하나라도 생겼다면 마을 헤더를 보임 (체크 해제 시 대응)
+                        header.classList.remove('hidden');
+                    }
+                }
+            }
         } 
     } 
     updateTabStatus(appState.activeTabId);
