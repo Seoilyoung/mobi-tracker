@@ -6,17 +6,31 @@
     <title>마비노기 모바일 숙제 트래커</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link rel="stylesheet" href="style.css">
-    <script src="app.js"></script>
 </head>
 
 <body>
+<script>
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+</script>
+
+<div id="loading-spinner" class="spinner-overlay">
+    <div class="spinner"></div>
+    <p>데이터를 불러오는 중...</p>
+</div>
 
 <div class="container">
-    <header>
+    <header class="header">
         <h1>마비노기 모바일 트래커</h1>
-        <button id="theme-toggle" class="icon-btn" onclick="toggleDarkMode()" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 1.5rem; background: none; border: none; cursor: pointer;" title="테마 변경">🌙</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="auth-btn" class="icon-btn" onclick="linkGoogleAccount()" title="구글 계정 연동 (데이터 백업)" style="font-size: 1.2rem; cursor: pointer; border: none; background: none;">💾</button>
+            
+            <button id="theme-toggle" class="icon-btn" onclick="toggleDarkMode()" style="font-size: 1.5rem; background: none; border: none; cursor: pointer;" title="테마 변경">🌙</button>
+        </div>
     </header>
 
     <div class="top-grid">
@@ -103,12 +117,10 @@
 <div class="modal-overlay" id="char-add-modal" onclick="if(event.target === this) closeCharAddModal()">
     <div class="modal-box" style="padding: 20px; max-width: 250px;">
         <h3 style="font-size: 1.05rem; margin-bottom: 12px;">새 캐릭터 추가</h3>
-        
         <input type="text" id="char-add-name" placeholder="새 캐릭터 이름" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none;" onkeypress="if(event.key==='Enter') submitNewCharacter()">
-        
         <div style="display: flex; gap: 8px; margin-bottom: 0;">
             <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white;" onclick="submitNewCharacter()">추가</button>
-            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--border); color: var(--text-main);" onclick="closeCharAddModal()">취소</button>
+            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: #e9ecef; color: var(--text-main);" onclick="closeCharAddModal()">취소</button>
         </div>
     </div>
 </div>
@@ -126,19 +138,20 @@
 <div class="modal-overlay" id="char-modal" onclick="if(event.target === this) closeCharModal()">
     <div class="modal-box" style="padding: 20px; max-width: 250px;">
         <h3 style="font-size: 1.05rem; margin-bottom: 12px;">캐릭터 설정</h3>
-        
         <input type="text" id="char-edit-name" placeholder="캐릭터 이름" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none;" onkeypress="if(event.key==='Enter') saveCharacterName()">
-        
         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
             <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white;" onclick="saveCharacterName()">저장</button>
-            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--border); color: var(--text-main);" onclick="closeCharModal()">취소</button>
+            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: #e9ecef; color: var(--text-main);" onclick="closeCharModal()">취소</button>
         </div>
-        
         <button style="background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 4px;" onclick="deleteCharacter()">이 캐릭터 삭제</button>
     </div>
 </div>
 
 <div id="toast-container"></div>
 
+
+    <script src="data.js"></script>
+    <script src="ui.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

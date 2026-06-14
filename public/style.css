@@ -1,4 +1,8 @@
-/* 🌟 1. 테마 색상 변수 선언 (대표님 컬러 적용) */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+/* =========================================================================
+   🌟 1. 테마 색상 변수 선언 (대표님의 오리지널 컬러 유지)
+========================================================================= */
 :root {
     --bg-color: #f4f7f6;
     --card-bg: #ffffff;
@@ -8,8 +12,8 @@
     --danger: #ff5c5c;
     --border: #dddddd;
     --tab-bg: #e0e0e0;
-    --hover-bg: #f8f9fa; /* 추가됨: 연한 배경용 */
-    --abyss-purple: #a64dff;
+    --hover-bg: #f8f9fa; /* 연한 배경용 */
+    --abyss-purple: #a64dff; /* 어비스 전용 보라색 */
     
     /* 이벤트 상태 배경색 */
     --ev-ongoing-bg: #e7f5ff;
@@ -17,7 +21,7 @@
     --ev-ended-bg: #ffe3e3;
 }
 
-/* 🌟 2. 다크 모드일 때 변할 색상들 */
+/* 🌟 2. 다크 모드일 때 색상 */
 body.dark-mode {
     --bg-color: #121212;
     --card-bg: #1e1e1e;
@@ -32,7 +36,56 @@ body.dark-mode {
     --ev-ended-bg: #4a191c;
 }
 
-/* 🌟 3. 기본 레이아웃 (부드러운 전환 효과 추가) */
+/* =========================================================================
+   🌟 3. 로딩 스피너 및 페이드인 애니메이션 (빈 화면 방지)
+========================================================================= */
+.spinner-overlay { 
+    position: fixed; 
+    top: 0; left: 0; width: 100%; height: 100%; 
+    background-color: var(--bg-color); 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 10000; 
+    transition: opacity 0.3s, visibility 0.3s; 
+}
+.spinner-overlay.fade-out { 
+    opacity: 0; 
+    visibility: hidden; 
+}
+.spinner { 
+    width: 40px; height: 40px; 
+    border: 4px solid var(--border); 
+    border-top: 4px solid var(--primary); 
+    border-radius: 50%; 
+    animation: spin 1s linear infinite; 
+}
+@keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+}
+.spinner-overlay p { 
+    margin-top: 15px; 
+    font-weight: bold; 
+    color: var(--text-main); 
+    font-size: 0.95rem; 
+}
+
+/* 초기 상태 숨김 및 불러오기 완료 시 페이드인 효과 */
+.container { 
+    width: 100%; 
+    max-width: 1200px; 
+    opacity: 0; 
+    transition: opacity 0.4s ease-in-out; 
+}
+.container.loaded { 
+    opacity: 1; 
+}
+
+/* =========================================================================
+   🌟 4. 기본 레이아웃 및 카드 (대표님 커스텀 100% 유지)
+========================================================================= */
 body { 
     font-family: 'Pretendard', 'Malgun Gothic', sans-serif; 
     background-color: var(--bg-color); 
@@ -42,11 +95,10 @@ body {
     display: flex; 
     flex-direction: column; 
     align-items: center; 
-    transition: background-color 0.3s, color 0.3s; /* 다크모드 애니메이션 */
+    transition: background-color 0.3s, color 0.3s; 
 }
 
-.container { width: 100%; max-width: 1200px; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; width: 100%; }
 
 .top-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; width: 100%; }
 @media (max-width: 768px) { .top-grid { grid-template-columns: 1fr; } }
@@ -64,20 +116,23 @@ body {
 .toggle-btn { background: none; border: none; font-size: 1.1rem; font-weight: 800; cursor: pointer; color: var(--text-muted); padding: 0 5px; transition: 0.2s; }
 .toggle-btn:hover { color: var(--primary); }
 
-.tabs-container { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 20px; padding-bottom: 5px; align-items: center; }
+/* =========================================================================
+   🌟 5. 캐릭터 탭 및 숙제 리스트
+========================================================================= */
+.tabs-container { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 20px; padding-bottom: 5px; align-items: center; width: 100%; }
 .tab-btn { background-color: var(--tab-bg); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; color: var(--text-main); white-space: nowrap; transition: 0.2s; }
 .tab-btn.active { background-color: var(--primary); color: white; }
 .tab-btn.active:hover { filter: brightness(1.1); }
 .tab-add-btn { background-color: var(--card-bg); border: 2px dashed var(--border); color: var(--text-muted); }
 
-/* 다크모드 지원을 위해 그림자 색상을 흰색에서 카드로 변경 */
+/* 다크모드 대응 그림자 */
 .status-check { margin-left: 4px; font-size: 1rem; font-weight: 900; text-shadow: -1px -1px 0 var(--card-bg), 1px -1px 0 var(--card-bg), -1px 1px 0 var(--card-bg), 1px 1px 0 var(--card-bg); }
 .status-red { color: var(--danger); }
 .status-yellow { color: #fcc419; }
 .status-green { color: #40c057; }
 
 .task-list { list-style: none; padding: 0; margin: 0; }
-.task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); transition: background-color 0.2s; }
 .task-item.edit-mode { flex-direction: column; align-items: stretch; border: none; padding: 0; }
 
 .task-content { display: flex; align-items: center; flex: 1; width: 100%; overflow: hidden; }
@@ -91,6 +146,9 @@ body {
 .icon-btn:hover { color: var(--primary); }
 .delete-btn:hover { color: var(--danger); }
 
+/* =========================================================================
+   🌟 6. 추가 폼 및 인풋
+========================================================================= */
 .add-wrap { margin-bottom: 15px; }
 .hidden { display: none !important; }
 
@@ -113,6 +171,9 @@ body {
 .checkbox-label { display: inline-flex !important; align-items: center !important; justify-content: flex-start !important; gap: 5px !important; width: auto !important; flex: 0 0 auto !important; font-size: 0.9rem; cursor: pointer; font-weight: bold; color: var(--primary); white-space: nowrap; margin-right: 5px; }
 .checkbox-label input[type="checkbox"] { flex: none !important; width: 16px !important; height: 16px !important; margin: 0 !important; cursor: pointer; }
 
+/* =========================================================================
+   🌟 7. 마을 그룹 & 물물교환 그리드
+========================================================================= */
 .town-group-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin: 15px 0 5px 0; background: var(--hover-bg); border-radius: 6px; border-left: 4px solid var(--primary); }
 .town-title { font-weight: 900; font-size: 1rem; display: flex; align-items: center; }
 .town-task-list { list-style: none; padding-left: 15px; margin: 0; }
@@ -141,6 +202,9 @@ body {
     .to-qty { grid-area: toQty; text-align: right; padding-right: 5px; }
 }
 
+/* =========================================================================
+   🌟 8. 이벤트 레이아웃
+========================================================================= */
 .event-list { list-style: none; padding: 0; margin: 0; }
 .event-item { border-bottom: 1px dashed var(--border); padding: 5px 0; }
 .event-grid { display: grid; grid-template-columns: 120px minmax(150px, 1.5fr) 190px minmax(120px, 1fr) minmax(100px, 1fr) 60px; grid-template-areas: "period title days memo1 memo2 actions"; align-items: center; gap: 10px; width: 100%; }
@@ -153,7 +217,6 @@ body {
 span.col-days { justify-content: flex-end; padding-right: 15px; color: var(--primary); font-weight: bold; font-size: 0.9rem; }
 span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* 다크모드 연동 완료 이벤트 상태 배경 */
 .ev-status-upcoming { background: var(--ev-upcoming-bg); color: var(--text-muted); } 
 .ev-status-ongoing { background: var(--ev-ongoing-bg); color: var(--primary); } 
 .ev-status-ended { background: var(--ev-ended-bg); color: var(--danger); text-decoration: line-through; } 
@@ -172,7 +235,9 @@ span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; w
     .col-actions { align-self: end; }
 }
 
-/* 🌟 어비스 구멍 전용 스타일 */
+/* =========================================================================
+   🌟 9. 어비스 구멍 전용 스타일
+========================================================================= */
 .btn-schedule-toggle { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; font-weight: bold; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s; }
 .btn-schedule-toggle:hover { background: var(--hover-bg); }
 
@@ -193,7 +258,9 @@ span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; w
 .timeline-item.future-time::before { background: var(--abyss-purple); }
 .timeline-item.past-time { text-decoration: line-through; opacity: 0.4; }
 
-/* 🌟 모달창 스타일 */
+/* =========================================================================
+   🌟 10. 모달창 & 토스트 알림 
+========================================================================= */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.2s; }
 .modal-overlay.show { opacity: 1; pointer-events: auto; }
 .modal-box { background: var(--card-bg); padding: 25px; border-radius: 12px; width: 90%; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; }
@@ -208,7 +275,7 @@ span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; w
 
 .tab-hint { font-size: 0.75rem; color: var(--text-muted); margin-left: 10px; white-space: nowrap; font-weight: normal; }
 
-/* 🌟 토스트 알림 스타일 추가 */
+/* 예쁜 토스트 알림 */
 #toast-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .toast { background: rgba(0, 0, 0, 0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); text-align: center; white-space: nowrap; }
 .toast.show { opacity: 1; transform: translateY(0); }
