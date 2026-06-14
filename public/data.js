@@ -65,23 +65,29 @@ let countdownInterval = null;
 let notifiedAbyssTime = null;
 
 // ==========================================
-// 3. 인증 및 계정 연동 (구글 로그인)
+// 3. 인증 및 계정 연동 (수정된 로직)
 // ==========================================
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
         docRef = db.collection("mabi_tracker").doc(user.uid);
+        
+        // UI 버튼 아이콘 동기화
         const isLinked = user.providerData.some(p => p.providerId === 'google.com');
         const authBtn = document.getElementById('auth-btn');
         if (authBtn) {
-            if (isLinked) {
-                authBtn.innerText = '✅'; authBtn.title = '구글 계정과 안전하게 연동됨';
-            } else {
-                authBtn.innerText = '💾'; authBtn.title = '구글 계정 연동 (데이터 백업)';
-            }
+            authBtn.innerText = isLinked ? '✅' : '💾';
+            authBtn.title = isLinked ? '구글 계정과 안전하게 연동됨' : '구글 계정 연동 (데이터 백업)';
         }
-        document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', loadData) : loadData();
+
+        // 🌟 개선: 인증이 완료된 직후에만 데이터 로드 실행
+        loadData();
     } else {
-        firebase.auth().signInAnonymously().catch(error => console.error("익명 로그인 실패:", error));
+        // 익명 로그인 시도 (인증 완료 시 위쪽 user 블록이 다시 실행됨)
+        firebase.auth().signInAnonymously().catch((error) => {
+            console.error("익명 로그인 실패:", error);
+            // 로그인 실패 시에도 로딩 스피너는 꺼줘야 함
+            document.getElementById('loading-spinner')?.classList.add('fade-out');
+        });
     }
 });
 
