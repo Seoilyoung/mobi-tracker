@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -26,21 +27,20 @@
 <div class="container">
     <header class="header">
         <h1>마비노기 모바일 트래커</h1>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <button id="auth-btn" class="icon-btn" onclick="linkGoogleAccount()" title="구글 계정 연동 (데이터 백업)" style="font-size: 1.2rem; cursor: pointer; border: none; background: none;">💾</button>
-            
-            <button id="theme-toggle" class="icon-btn" onclick="toggleDarkMode()" style="font-size: 1.5rem; background: none; border: none; cursor: pointer;" title="테마 변경">🌙</button>
+        <div class="header-actions-wrap">
+            <button id="auth-btn" class="icon-btn auth-btn-style" title="구글 계정 연동 (데이터 백업)">💾</button>
+            <button id="theme-toggle" class="icon-btn theme-toggle-style" title="테마 변경">🌙</button>
         </div>
     </header>
 
     <div class="top-grid">
-        <div class="card" style="padding-top: 15px;">
-            <div class="card-header" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
-                <h2 style="font-size: 1.2rem;">어비스 구멍</h2>
+        <div class="card card-abyss-custom">
+            <div class="card-header header-no-border">
+                <h2 class="abyss-title-text">어비스 구멍</h2>
                 <div class="toggle-group">
-                    <button class="btn-schedule-toggle" onclick="requestNotificationPermission()" title="알림 켜기">🔔</button>
-                    <button class="btn-schedule-toggle" onclick="toggleAbyssSchedule()">📅 일정표</button>
-                    <button class="toggle-btn" onclick="toggleInput('abyss')" title="기준 시간 변경">✏️</button>
+                    <button id="btn-noti-toggle" class="btn-schedule-toggle" title="알림 켜기">🔔</button>
+                    <button id="btn-abyss-schedule" class="btn-schedule-toggle">📅 일정표</button>
+                    <button id="btn-abyss-edit" class="toggle-btn" title="기준 시간 변경">✏️</button>
                 </div>
             </div>
             
@@ -52,18 +52,17 @@
                         <div class="abyss-countdown" id="abyss-countdown"></div>
                     </div>
                 </div>
-
                 <div class="abyss-timeline hidden" id="abyss-timeline"></div>
             </div>
 
             <div class="add-wrap hidden" id="add-wrap-abyss">
-                <div class="inline-form-box" style="margin-top: 10px;">
+                <div class="inline-form-box mt-10">
                     <div class="form-row">
-                        <input type="datetime-local" id="input-abyss" style="width:100%;">
+                        <input type="datetime-local" id="input-abyss" class="w-100">
                     </div>
                     <div class="form-actions">
-                        <button class="btn-cancel" onclick="toggleInput('abyss')">취소</button>
-                        <button class="btn-submit" onclick="saveAbyssTime()">적용</button>
+                        <button id="btn-abyss-cancel" class="btn-cancel">취소</button>
+                        <button id="btn-abyss-save" class="btn-submit">적용</button>
                     </div>
                 </div>
             </div>
@@ -72,14 +71,14 @@
         <div class="card">
             <div class="card-header">
                 <h2>📢 공지사항</h2>
-                <button class="toggle-btn" onclick="toggleInput('notice')" title="공지 추가">＋</button>
+                <button id="btn-notice-add-toggle" class="toggle-btn" title="공지 추가">＋</button>
             </div>
-            <ul class="task-list" id="list-notice" style="max-height: 110px; overflow-y: auto; padding-right: 5px;"></ul>
+            <ul class="task-list notice-list-custom" id="list-notice"></ul>
             <div class="add-wrap hidden" id="add-wrap-notice">
                 <div class="form-row">
-                    <input type="text" id="input-notice-title" placeholder="공지 제목 입력..." style="flex: 2;">
-                    <input type="text" id="input-notice-url" placeholder="링크 주소 URL (선택)..." style="flex: 2;">
-                    <button class="btn-submit" onclick="addNotice()">등록</button>
+                    <input type="text" id="input-notice-title" class="flex-2" placeholder="공지 제목 입력...">
+                    <input type="text" id="input-notice-url" class="flex-2" placeholder="링크 주소 URL (선택)...">
+                    <button id="btn-notice-save" class="btn-submit">등록</button>
                 </div>
             </div>
         </div>
@@ -89,7 +88,7 @@
         <div class="card full-width">
             <div class="card-header">
                 <h2>🎉 진행 중인 이벤트</h2>
-                <button class="toggle-btn" onclick="toggleEventInput()" title="이벤트 추가">＋</button>
+                <button id="btn-event-add-toggle" class="toggle-btn" title="이벤트 추가">＋</button>
             </div>
             <ul class="event-list" id="list-event"></ul>
             <div class="add-wrap hidden" id="add-wrap-event"></div>
@@ -98,13 +97,13 @@
         <div class="card full-width">
             <div class="card-header">
                 <h2>📝 공통 메모</h2>
-                <button class="toggle-btn" onclick="toggleInput('memo')" title="메모 추가">＋</button>
+                <button id="btn-memo-add-toggle" class="toggle-btn" title="메모 추가">＋</button>
             </div>
             <ul class="task-list" id="list-memo"></ul>
             <div class="add-wrap hidden" id="add-wrap-memo">
                 <div class="form-row">
-                    <input type="text" id="input-memo" placeholder="새 메모 추가..." onkeypress="if(event.key==='Enter') addMemo()">
-                    <button class="btn-submit" onclick="addMemo()">추가</button>
+                    <input type="text" id="input-memo" placeholder="새 메모 추가...">
+                    <button id="btn-memo-save" class="btn-submit">추가</button>
                 </div>
             </div>
         </div>
@@ -114,44 +113,43 @@
     <div class="char-grid" id="character-content"></div>
 </div>
 
-<div class="modal-overlay" id="char-add-modal" onclick="if(event.target === this) closeCharAddModal()">
-    <div class="modal-box" style="padding: 20px; max-width: 250px;">
-        <h3 style="font-size: 1.05rem; margin-bottom: 12px;">새 캐릭터 추가</h3>
-        <input type="text" id="char-add-name" placeholder="새 캐릭터 이름" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none;" onkeypress="if(event.key==='Enter') submitNewCharacter()">
-        <div style="display: flex; gap: 8px; margin-bottom: 0;">
-            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white;" onclick="submitNewCharacter()">추가</button>
-            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: #e9ecef; color: var(--text-main);" onclick="closeCharAddModal()">취소</button>
+<div class="modal-overlay" id="char-add-modal">
+    <div class="modal-box modal-box-small">
+        <h3 class="modal-title-small">새 캐릭터 추가</h3>
+        <input type="text" id="char-add-name" class="modal-input-styled" placeholder="새 캐릭터 이름">
+        <div class="modal-btn-row">
+            <button id="btn-char-add-submit" class="modal-btn modal-btn-primary-styled">추가</button>
+            <button id="btn-char-add-cancel" class="modal-btn modal-btn-secondary-styled">취소</button>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="delete-modal" onclick="if(event.target === this) closeDeleteModal()">
+<div class="modal-overlay" id="delete-modal">
     <div class="modal-box">
         <h3>항목 삭제</h3>
         <p>어떻게 삭제하시겠습니까?<br>(개별 삭제 시 이 캐릭터의 화면에서만 숨겨집니다.)</p>
-        <button class="modal-btn btn-del-local" onclick="executeDelete('local')">현재 캐릭터만 개별 삭제</button>
-        <button class="modal-btn btn-del-all" onclick="executeDelete('all')">모든 캐릭터에서 삭제</button>
-        <button class="modal-btn btn-del-cancel" onclick="closeDeleteModal()">취소</button>
+        <button id="btn-del-local" class="modal-btn btn-del-local">현재 캐릭터만 개별 삭제</button>
+        <button id="btn-del-all" class="modal-btn btn-del-all">모든 캐릭터에서 삭제</button>
+        <button id="btn-del-cancel" class="modal-btn btn-del-cancel">취소</button>
     </div>
 </div>
 
-<div class="modal-overlay" id="char-modal" onclick="if(event.target === this) closeCharModal()">
-    <div class="modal-box" style="padding: 20px; max-width: 250px;">
-        <h3 style="font-size: 1.05rem; margin-bottom: 12px;">캐릭터 설정</h3>
-        <input type="text" id="char-edit-name" placeholder="캐릭터 이름" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none;" onkeypress="if(event.key==='Enter') saveCharacterName()">
-        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white;" onclick="saveCharacterName()">저장</button>
-            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: #e9ecef; color: var(--text-main);" onclick="closeCharModal()">취소</button>
+<div class="modal-overlay" id="char-modal">
+    <div class="modal-box modal-box-small">
+        <h3 class="modal-title-small">캐릭터 설정</h3>
+        <input type="text" id="char-edit-name" class="modal-input-styled" placeholder="캐릭터 이름">
+        <div class="modal-btn-row-spaced">
+            <button id="btn-char-edit-save" class="modal-btn modal-btn-primary-styled">저장</button>
+            <button id="btn-char-edit-cancel" class="modal-btn modal-btn-secondary-styled">취소</button>
         </div>
-        <button style="background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 4px;" onclick="deleteCharacter()">이 캐릭터 삭제</button>
+        <button id="btn-char-delete" class="btn-text-danger">이 캐릭터 삭제</button>
     </div>
 </div>
 
 <div id="toast-container"></div>
 
-
-    <script src="data.js"></script>
-    <script src="ui.js"></script>
-    <script src="app.js"></script>
+<script src="data.js"></script>
+<script src="ui.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

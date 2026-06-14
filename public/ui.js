@@ -1,11 +1,12 @@
 // ==========================================
-// 1. 공통 UI & 토스트 알림
+// 1. 공통 UI & 알림 제어
 // ==========================================
 function initDarkMode() {
     const savedTheme = localStorage.getItem('theme');
     const btn = document.getElementById('theme-toggle');
     if (savedTheme === 'dark' && btn) { btn.innerText = '☀️'; }
 }
+
 function toggleDarkMode() {
     const isDark = document.body.classList.toggle('dark-mode');
     const btn = document.getElementById('theme-toggle');
@@ -17,36 +18,62 @@ document.addEventListener('DOMContentLoaded', initDarkMode);
 function showToast(msg) {
     const container = document.getElementById('toast-container');
     if (!container) return;
+    
     const toast = document.createElement('div');
-    toast.className = 'toast'; toast.innerText = msg;
+    toast.className = 'toast'; 
+    toast.innerText = msg;
     container.appendChild(toast);
+    
     setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
+    setTimeout(() => { 
+        toast.classList.remove('show'); 
+        setTimeout(() => toast.remove(), 300); 
+    }, 2500);
 }
 
 function requestNotificationPermission() {
-    if (!("Notification" in window)) { showToast("이 브라우저는 알림 기능을 지원하지 않습니다."); return; }
+    if (!("Notification" in window)) { 
+        showToast("이 브라우저는 알림 기능을 지원하지 않습니다."); 
+        return; 
+    }
     Notification.requestPermission().then(permission => {
-        if (permission === "granted") { showToast("🔔 알림이 켜졌습니다! 어비스 구멍 시간이 되면 알려드릴게요."); new Notification("마비노기 모바일 트래커", { body: "이렇게 알림이 올 거예요!" }); } 
-        else { showToast("알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요."); }
+        if (permission === "granted") { 
+            showToast("🔔 알림이 켜졌습니다! 어비스 구멍 시간이 되면 알려드릴게요."); 
+            new Notification("마비노기 모바일 트래커", { body: "이렇게 알림이 올 거예요!" }); 
+        } else { 
+            showToast("알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요."); 
+        }
     });
 }
 
 // ==========================================
-// 2. 어비스 구멍 렌더링
+// 2. 어비스 구멍 UI
 // ==========================================
 function renderAbyssSchedule() {
-    if(!appState || !appState.global || !appState.global.abyss) return;
-    const baseTimeStr = appState.global.abyss.baseTime; if(!baseTimeStr) return;
-    const baseDate = new Date(baseTimeStr); if(isNaN(baseDate.getTime())) return;
+    if (!appState || !appState.global || !appState.global.abyss) return;
+    const baseTimeStr = appState.global.abyss.baseTime; 
+    if (!baseTimeStr) return;
+    
+    const baseDate = new Date(baseTimeStr); 
+    if (isNaN(baseDate.getTime())) return;
 
     const intervalMs = 130500000; 
-    const timelineEl = document.getElementById('abyss-timeline'); timelineEl.innerHTML = '';
-    let nowMs = Date.now(); let baseMs = baseDate.getTime();
-    let elapsed = nowMs - baseMs; let cycles = Math.floor(elapsed / intervalMs); if (cycles < 0) cycles = 0; 
+    const timelineEl = document.getElementById('abyss-timeline'); 
+    timelineEl.innerHTML = '';
+    
+    let nowMs = Date.now(); 
+    let baseMs = baseDate.getTime();
+    let elapsed = nowMs - baseMs; 
+    let cycles = Math.floor(elapsed / intervalMs); 
+    if (cycles < 0) cycles = 0; 
 
-    let times = []; for(let i = 0; i < 5; i++) { times.push(new Date(baseMs + (cycles + i) * intervalMs)); }
-    let nextTime = times.find(t => t.getTime() > Date.now()); if(!nextTime) nextTime = times[times.length - 1]; 
+    let times = []; 
+    for(let i = 0; i < 5; i++) { 
+        times.push(new Date(baseMs + (cycles + i) * intervalMs)); 
+    }
+    
+    let nextTime = times.find(t => t.getTime() > Date.now()); 
+    if (!nextTime) nextTime = times[times.length - 1]; 
 
     document.getElementById('abyss-next-time').innerText = formatDateKor(nextTime.toISOString(), false);
     document.getElementById('abyss-countdown').dataset.target = nextTime.getTime();
@@ -54,130 +81,332 @@ function renderAbyssSchedule() {
 
     times.forEach((t, index) => {
         let isPast = t.getTime() < Date.now();
-        let itemClass = index === 0 ? 'base-time' : 'future-time'; if(isPast) itemClass += ' past-time';
+        let itemClass = index === 0 ? 'base-time' : 'future-time'; 
+        if (isPast) itemClass += ' past-time';
         timelineEl.innerHTML += `<div class="timeline-item ${itemClass}">${formatDateKor(t.toISOString(), true)}</div>`;
     });
 }
 
 function updateAbyssCountdown() {
-    const el = document.getElementById('abyss-countdown'); if(!el || !el.dataset.target) return;
-    const targetTime = parseInt(el.dataset.target); const diff = targetTime - Date.now();
-    if(diff <= 0) {
-        el.innerText = "발생 중 (또는 지남)"; el.style.color = "var(--danger)";
+    const el = document.getElementById('abyss-countdown'); 
+    if (!el || !el.dataset.target) return;
+    
+    const targetTime = parseInt(el.dataset.target); 
+    const diff = targetTime - Date.now();
+    
+    if (diff <= 0) {
+        el.innerText = "발생 중 (또는 지남)"; 
+        el.style.color = "var(--danger)";
         if (diff > -60000 && notifiedAbyssTime !== targetTime && Notification.permission === "granted") {
-            new Notification("🌌 어비스 구멍 발생!", { body: "지금 어비스 구멍이 열렸습니다! 게임에 접속하세요." }); notifiedAbyssTime = targetTime; 
+            new Notification("🌌 어비스 구멍 발생!", { body: "지금 어비스 구멍이 열렸습니다! 게임에 접속하세요." }); 
+            notifiedAbyssTime = targetTime; 
         }
-        if(diff < -60000) renderAbyssSchedule(); 
+        if (diff < -60000) renderAbyssSchedule(); 
     } else {
-        const h = Math.floor(diff / (1000 * 60 * 60)); const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        el.innerText = `${h > 0 ? h+'시간 ' : ''}${m}분 남음`; el.style.color = "var(--text-muted)";
+        const h = Math.floor(diff / (1000 * 60 * 60)); 
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        el.innerText = `${h > 0 ? h+'시간 ' : ''}${m}분 남음`; 
+        el.style.color = "var(--text-muted)";
         if (notifiedAbyssTime !== targetTime) { notifiedAbyssTime = null; }
     }
 }
 
 // ==========================================
-// 3. 글로벌 & 캐릭터 렌더링
+// 3. 전역 항목 (공지사항, 메모, 이벤트) UI
 // ==========================================
-function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
-    const isTrade = categoryId.includes('trade'); const tid = task ? task.id : 'new'; const fid = `${categoryId}-${tid}`; 
-    const vTown = task && task.town ? task.town : ''; const vNpc = task && task.npc ? task.npc : ''; const vLabel = task && !isTrade ? task.label : ''; const vFrom = task && isTrade ? task.fromItem : ''; const vFromQ = task && isTrade ? task.fromQty : ''; const vTo = task && isTrade ? task.toItem : ''; const vToQ = task && isTrade ? task.toQty : '';
-    const isIndiv = task ? !task.isShared : true; const isPaused = task ? !!task.isPaused : false;
-    let chipsHtml = `<div class="target-chars-wrap" id="chips-${fid}">`;
-    appState.characters.forEach(c => {
-        let isSelected = true; if (task) { if (isGlobal) { if (c.hiddenTasks && c.hiddenTasks.includes(tid)) isSelected = false; } else { if (!c.customTasks[categoryId].some(t => t.id === tid)) isSelected = false; } }
-        chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`;
-    });
-    chipsHtml += `</div>`;
-    let inputsHtml = isTrade ? `<div class="form-row"><input type="text" id="npc-${fid}" placeholder="NPC 이름 (선택)" value="${vNpc}"></div><div class="trade-input-row" style="padding:0; background:transparent;"><input type="text" id="from-${fid}" placeholder="보유 템" value="${vFrom}"><input type="number" id="from-qty-${fid}" placeholder="수량" value="${vFromQ}"><span class="trade-arrow-icon">→</span><input type="text" id="to-${fid}" placeholder="목표 템" value="${vTo}"><input type="number" id="to-qty-${fid}" placeholder="수량" value="${vToQ}"></div>` : `<div class="form-row"><input type="text" id="label-${fid}" placeholder="숙제 내용..." value="${vLabel}"></div>`;
-    let moveBtnsHtml = task ? `<button type="button" class="action-icon-btn" onclick="moveBlock('${categoryId}', 'task', '${tid}', 'up')" title="위로 이동">▲</button><button type="button" class="action-icon-btn" onclick="moveBlock('${categoryId}', 'task', '${tid}', 'down')" title="아래로 이동">▼</button>` : '';
-    return `<div class="inline-form-box">${chipsHtml}<div class="form-row"><label class="checkbox-label" title="체크 해제 시 원정대(계정) 전체 공유됩니다"><input type="checkbox" id="indiv-${fid}" ${isIndiv ? 'checked' : ''}> 개별</label><label class="checkbox-label" style="color:var(--danger)" title="당분간 하지 않을 항목은 비활성화 해두세요"><input type="checkbox" id="paused-${fid}" ${isPaused ? 'checked' : ''}> ⏸️ 비활성화</label><input type="text" id="town-${fid}" placeholder="마을 이름 (선택: 같은 마을끼리 묶임)" value="${vTown}"></div>${inputsHtml}<div class="form-actions">${moveBtnsHtml}<button type="button" class="btn-cancel" onclick="cancelEdit('${categoryId}', '${tid}')">취소</button><button type="button" class="btn-submit ${task ? 'edit' : ''}" onclick="saveTask('${categoryId}', '${tid}', ${isGlobal})">${task ? '수정' : '추가'}</button></div></div>`;
-}
-
-function renderAll() { renderGlobal(); renderTabs(); renderTaskCards(); renderCharacterTasks(); }
-
 function renderGlobal() {
-    renderAbyssSchedule(); const noticeList = document.getElementById('list-notice'); noticeList.innerHTML = '';
-    if(appState.global.notices.length === 0) { noticeList.innerHTML = `<li class="task-item" style="color:var(--text-muted); justify-content:center; font-size:0.9rem; border:none;">등록된 공지사항이 없습니다.</li>`; } else {
+    renderAbyssSchedule(); 
+    
+    // 공지사항 렌더링
+    const noticeList = document.getElementById('list-notice'); 
+    noticeList.innerHTML = '';
+    if (appState.global.notices.length === 0) { 
+        noticeList.innerHTML = `<li class="task-item" style="color:var(--text-muted); justify-content:center; font-size:0.9rem; border:none;">등록된 공지사항이 없습니다.</li>`; 
+    } else {
         appState.global.notices.forEach(n => {
-            let titleHTML = n.url ? `<a href="${n.url}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">• ${n.title} 🔗</a>` : `<span>• ${n.title}</span>`;
+            let titleHTML = n.url 
+                ? `<a href="${n.url}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">• ${n.title} 🔗</a>` 
+                : `<span>• ${n.title}</span>`;
             noticeList.innerHTML += `<li class="task-item" style="padding: 6px 0;"><div class="task-content" style="font-size:0.95rem;">${titleHTML}</div><button class="icon-btn delete-btn" onclick="deleteNotice('${n.id}')">✕</button></li>`;
         });
     }
-    const eventList = document.getElementById('list-event'); eventList.innerHTML = '';
+    
+    // 이벤트 렌더링
+    const eventList = document.getElementById('list-event'); 
+    eventList.innerHTML = '';
     appState.global.event.forEach(ev => {
-        const statusClass = getEventStatusClass(ev.period); const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
-        eventList.innerHTML += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${ev.period}</span><span class="col-title">${ev.title}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${ev.memo1}</span><span class="col-memo2">${ev.memo2}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
+        const statusClass = getEventStatusClass(ev.period); 
+        const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
+        eventList.innerHTML += `
+            <li class="event-item">
+                <div class="event-grid">
+                    <span class="col-period ${statusClass}">${ev.period}</span>
+                    <span class="col-title">${ev.title}</span>
+                    <span class="col-days">${daysStr}</span>
+                    <span class="col-memo1">${ev.memo1}</span>
+                    <span class="col-memo2">${ev.memo2}</span>
+                    <div class="col-actions">
+                        <button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button>
+                        <button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button>
+                    </div>
+                </div>
+            </li>`;
     });
-    const memoList = document.getElementById('list-memo'); memoList.innerHTML = '';
-    appState.global.memo.forEach(memo => { memoList.innerHTML += `<li class="task-item"><div class="task-content"><span>• ${memo.label}</span></div><button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button></li>`; });
+    
+    // 메모 렌더링
+    const memoList = document.getElementById('list-memo'); 
+    memoList.innerHTML = '';
+    appState.global.memo.forEach(memo => { 
+        memoList.innerHTML += `<li class="task-item"><div class="task-content"><span>• ${memo.label}</span></div><button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button></li>`; 
+    });
+}
+
+// ==========================================
+// 4. 입력 폼 및 캐릭터 탭 UI 생성
+// ==========================================
+function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
+    const isTrade = categoryId.includes('trade'); 
+    const tid = task ? task.id : 'new'; 
+    const fid = `${categoryId}-${tid}`; 
+    const vTown = task && task.town ? task.town : ''; 
+    const vNpc = task && task.npc ? task.npc : ''; 
+    const vLabel = task && !isTrade ? task.label : ''; 
+    const vFrom = task && isTrade ? task.fromItem : ''; 
+    const vFromQ = task && isTrade ? task.fromQty : ''; 
+    const vTo = task && isTrade ? task.toItem : ''; 
+    const vToQ = task && isTrade ? task.toQty : '';
+    const isIndiv = task ? !task.isShared : true; 
+    const isPaused = task ? !!task.isPaused : false;
+    
+    let chipsHtml = `<div class="target-chars-wrap" id="chips-${fid}">`;
+    appState.characters.forEach(c => {
+        let isSelected = true; 
+        if (task) { 
+            if (isGlobal) { 
+                if (c.hiddenTasks && c.hiddenTasks.includes(tid)) isSelected = false; 
+            } else { 
+                if (!c.customTasks[categoryId].some(t => t.id === tid)) isSelected = false; 
+            } 
+        }
+        chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`;
+    });
+    chipsHtml += `</div>`;
+    
+    let inputsHtml = isTrade 
+        ? `<div class="form-row"><input type="text" id="npc-${fid}" placeholder="NPC 이름 (선택)" value="${vNpc}"></div><div class="trade-input-row" style="padding:0; background:transparent;"><input type="text" id="from-${fid}" placeholder="보유 템" value="${vFrom}"><input type="number" id="from-qty-${fid}" placeholder="수량" value="${vFromQ}"><span class="trade-arrow-icon">→</span><input type="text" id="to-${fid}" placeholder="목표 템" value="${vTo}"><input type="number" id="to-qty-${fid}" placeholder="수량" value="${vToQ}"></div>` 
+        : `<div class="form-row"><input type="text" id="label-${fid}" placeholder="숙제 내용..." value="${vLabel}"></div>`;
+        
+    let moveBtnsHtml = task 
+        ? `<button type="button" class="action-icon-btn" onclick="moveBlock('${categoryId}', 'task', '${tid}', 'up')" title="위로 이동">▲</button><button type="button" class="action-icon-btn" onclick="moveBlock('${categoryId}', 'task', '${tid}', 'down')" title="아래로 이동">▼</button>` 
+        : '';
+        
+    return `
+        <div class="inline-form-box">
+            ${chipsHtml}
+            <div class="form-row">
+                <label class="checkbox-label" title="체크 해제 시 원정대(계정) 전체 공유됩니다"><input type="checkbox" id="indiv-${fid}" ${isIndiv ? 'checked' : ''}> 개별</label>
+                <label class="checkbox-label" style="color:var(--danger)" title="당분간 하지 않을 항목은 비활성화 해두세요"><input type="checkbox" id="paused-${fid}" ${isPaused ? 'checked' : ''}> ⏸️ 비활성화</label>
+                <input type="text" id="town-${fid}" placeholder="마을 이름 (선택: 같은 마을끼리 묶임)" value="${vTown}">
+            </div>
+            ${inputsHtml}
+            <div class="form-actions">
+                ${moveBtnsHtml}
+                <button type="button" class="btn-cancel" onclick="cancelEdit('${categoryId}', '${tid}')">취소</button>
+                <button type="button" class="btn-submit ${task ? 'edit' : ''}" onclick="saveTask('${categoryId}', '${tid}', ${isGlobal})">${task ? '수정' : '추가'}</button>
+            </div>
+        </div>`;
 }
 
 function renderTabs() {
-    const container = document.getElementById('tabs-container'); container.innerHTML = '';
+    const container = document.getElementById('tabs-container'); 
+    container.innerHTML = '';
+    
     appState.characters.forEach(char => {
-        const btn = document.createElement('button'); const isActive = appState.activeTabId === char.id; btn.className = `tab-btn ${isActive ? 'active' : ''}`;
-        if(isActive) btn.title = "한 번 더 누르면 설정을 엽니다";
-        const status = getCharCompletionStatus(char); let statusClass = '';
-        if(status === 'red') statusClass = 'status-red'; else if(status === 'yellow') statusClass = 'status-yellow'; else if(status === 'green') statusClass = 'status-green';
+        const btn = document.createElement('button'); 
+        const isActive = appState.activeTabId === char.id; 
+        btn.className = `tab-btn ${isActive ? 'active' : ''}`;
+        if (isActive) btn.title = "한 번 더 누르면 설정을 엽니다";
+        
+        const status = getCharCompletionStatus(char); 
+        let statusClass = '';
+        if (status === 'red') statusClass = 'status-red'; 
+        else if (status === 'yellow') statusClass = 'status-yellow'; 
+        else if (status === 'green') statusClass = 'status-green';
+        
         btn.innerHTML = `${char.name} <span class="status-check ${statusClass}">✔</span>`;
-        btn.dataset.charId = char.id; btn.onclick = () => { isActive ? manageCharacter(char.id) : switchTab(char.id); }; container.appendChild(btn);
+        btn.dataset.charId = char.id; 
+        btn.onclick = () => { isActive ? manageCharacter(char.id) : switchTab(char.id); }; 
+        container.appendChild(btn);
     });
-    const addBtn = document.createElement('button'); addBtn.className = 'tab-btn tab-add-btn'; addBtn.innerText = '+ 캐릭 추가'; addBtn.onclick = addNewCharacter; container.appendChild(addBtn);
-    const hint = document.createElement('span'); hint.className = 'tab-hint'; hint.innerHTML = '💡 활성화된 탭 한 번 더 클릭 시 설정'; container.appendChild(hint);
+    
+    const addBtn = document.createElement('button'); 
+    addBtn.className = 'tab-btn tab-add-btn'; 
+    addBtn.innerText = '+ 캐릭 추가'; 
+    addBtn.onclick = addNewCharacter; 
+    container.appendChild(addBtn);
+    
+    const hint = document.createElement('span'); 
+    hint.className = 'tab-hint'; 
+    hint.innerHTML = '💡 활성화된 탭 한 번 더 클릭 시 설정'; 
+    container.appendChild(hint);
+}
+
+function updateTabStatus(charId) { 
+    const char = appState.characters.find(c => c.id === charId); 
+    if (!char) return; 
+    
+    const status = getCharCompletionStatus(char); 
+    const statusClass = status === 'red' ? 'status-red' : status === 'yellow' ? 'status-yellow' : 'status-green'; 
+    const tabBtn = document.querySelector(`.tab-btn[data-char-id="${charId}"]`); 
+    if (tabBtn) { 
+        const checkSpan = tabBtn.querySelector('.status-check'); 
+        if (checkSpan) checkSpan.className = `status-check ${statusClass}`; 
+    } 
+}
+
+// ==========================================
+// 5. 숙제 목록(Task) 렌더링
+// ==========================================
+function renderAll() { 
+    renderGlobal(); 
+    renderTabs(); 
+    renderTaskCards(); 
+    renderCharacterTasks(); 
 }
 
 function renderTaskCards() {
-    const container = document.getElementById('character-content'); container.innerHTML = '';
+    const container = document.getElementById('character-content'); 
+    container.innerHTML = '';
     categoriesInfo.forEach(cat => {
-        container.innerHTML += `<div class="card"><div class="card-header"><h2>${cat.title}</h2><div class="toggle-group"><button class="toggle-btn" onclick="toggleCompleted('${cat.id}')" id="btn-toggle-${cat.id}" title="완료 항목 보기/숨기기">∨</button><button class="toggle-btn" onclick="toggleInput('${cat.id}')" title="항목 열기">＋</button></div></div><ul class="task-list" id="list-${cat.id}"></ul><div class="add-wrap hidden" id="add-wrap-${cat.id}"></div></div>`;
+        container.innerHTML += `
+            <div class="card">
+                <div class="card-header">
+                    <h2>${cat.title}</h2>
+                    <div class="toggle-group">
+                        <button class="toggle-btn" onclick="toggleCompleted('${cat.id}')" id="btn-toggle-${cat.id}" title="완료 항목 보기/숨기기">∨</button>
+                        <button class="toggle-btn" onclick="toggleInput('${cat.id}')" title="항목 열기">＋</button>
+                    </div>
+                </div>
+                <ul class="task-list" id="list-${cat.id}"></ul>
+                <div class="add-wrap hidden" id="add-wrap-${cat.id}"></div>
+            </div>`;
         document.getElementById(`add-wrap-${cat.id}`).innerHTML = getTaskFormHTML(cat.id);
     });
 }
 
 function renderCharacterTasks() {
-    const activeChar = appState.characters.find(c => c.id === appState.activeTabId); if (!activeChar) return;
+    const activeChar = appState.characters.find(c => c.id === appState.activeTabId); 
+    if (!activeChar) return;
+    
     const todayDay = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
     categoriesInfo.forEach(cat => {
-        const listEl = document.getElementById(`list-${cat.id}`); listEl.innerHTML = '';
+        const listEl = document.getElementById(`list-${cat.id}`); 
+        listEl.innerHTML = '';
+        
         let globalTasks = appState.global.tasksTemplate[cat.id].filter(t => !activeChar.hiddenTasks.includes(t.id)).map(t => ({...t, isGlobal: true}));
         let customTasks = (activeChar.customTasks && activeChar.customTasks[cat.id]) ? activeChar.customTasks[cat.id].map(t => ({...t, isGlobal: false})) : [];
-        let allTasks = [...globalTasks, ...customTasks]; let blocks = []; let townMap = {};
-        allTasks.forEach(task => { if (task.town) { if (!townMap[task.town]) townMap[task.town] = []; townMap[task.town].push(task); } else { blocks.push({ type: 'task', order: task.order || 0, task: task }); } });
+        let allTasks = [...globalTasks, ...customTasks]; 
+        let blocks = []; 
+        let townMap = {};
+        
+        allTasks.forEach(task => { 
+            if (task.town) { 
+                if (!townMap[task.town]) townMap[task.town] = []; 
+                townMap[task.town].push(task); 
+            } else { 
+                blocks.push({ type: 'task', order: task.order || 0, task: task }); 
+            } 
+        });
+        
         for (let tName in townMap) {
-            let tOrder = appState.global.towns[cat.id]?.[tName]?.order || 0; let tColor = appState.global.towns[cat.id]?.[tName]?.color || 'var(--primary)'; let sTasks = townMap[tName].sort((a, b) => (a.order || 0) - (b.order || 0));
+            let tOrder = appState.global.towns[cat.id]?.[tName]?.order || 0; 
+            let tColor = appState.global.towns[cat.id]?.[tName]?.color || 'var(--primary)'; 
+            let sTasks = townMap[tName].sort((a, b) => (a.order || 0) - (b.order || 0));
             blocks.push({ type: 'town', name: tName, order: tOrder, color: tColor, tasks: sTasks });
         }
         blocks.sort((a, b) => a.order - b.order);
+        
         if (cat.id === 'daily') {
             appState.global.event.forEach(ev => {
-                const status = getEventStatusClass(ev.period); const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(activeChar.id);
-                if (status === 'ev-status-ongoing' && ev.days && ev.days.includes(todayDay) && isForThisChar) { blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${ev.title}`, type: 'normal', isEventInject: true } }); }
+                const status = getEventStatusClass(ev.period); 
+                const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(activeChar.id);
+                if (status === 'ev-status-ongoing' && ev.days && ev.days.includes(todayDay) && isForThisChar) { 
+                    blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${ev.title}`, type: 'normal', isEventInject: true } }); 
+                }
             });
         }
+        
         blocks.forEach(block => {
             if (block.type === 'town') {
-                let hasVisibleTasks = block.tasks.some(t => { if (currentlyEditingTask && currentlyEditingTask.taskId === t.id) return true; let isChecked = t.isShared ? !!appState.global.sharedChecks[t.id] : !!activeChar.checks[t.id]; return !((isChecked && !uiState.showCompleted[cat.id]) || (t.isPaused && !uiState.showCompleted[cat.id])); });
+                let hasVisibleTasks = block.tasks.some(t => { 
+                    if (currentlyEditingTask && currentlyEditingTask.taskId === t.id) return true; 
+                    let isChecked = t.isShared ? !!appState.global.sharedChecks[t.id] : !!activeChar.checks[t.id]; 
+                    return !((isChecked && !uiState.showCompleted[cat.id]) || (t.isPaused && !uiState.showCompleted[cat.id])); 
+                });
                 if (!hasVisibleTasks) return; 
-                listEl.innerHTML += `<div class="town-group-header" style="border-left-color: ${block.color};"><div class="town-title" style="color: ${block.color};">📍 ${block.name}</div><div class="action-btns"><button class="icon-btn" onclick="cycleTownColor('${cat.id}', '${block.name}')" title="색상 변경">🎨</button><button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'up')" title="위로">▲</button><button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'down')" title="아래로">▼</button></div></div>`;
-                let subList = `<ul class="town-task-list">`; block.tasks.forEach(t => subList += renderTaskItemStr(cat.id, t, activeChar)); subList += `</ul>`; listEl.innerHTML += subList;
-            } else { listEl.innerHTML += renderTaskItemStr(cat.id, block.task, activeChar); }
+                
+                listEl.innerHTML += `
+                    <div class="town-group-header" style="border-left-color: ${block.color};">
+                        <div class="town-title" style="color: ${block.color};">📍 ${block.name}</div>
+                        <div class="action-btns">
+                            <button class="icon-btn" onclick="cycleTownColor('${cat.id}', '${block.name}')" title="색상 변경">🎨</button>
+                            <button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'up')" title="위로">▲</button>
+                            <button class="icon-btn" onclick="moveBlock('${cat.id}', 'town', '${block.name}', 'down')" title="아래로">▼</button>
+                        </div>
+                    </div>`;
+                
+                let subList = `<ul class="town-task-list">`; 
+                block.tasks.forEach(t => subList += renderTaskItemStr(cat.id, t, activeChar)); 
+                subList += `</ul>`; 
+                listEl.innerHTML += subList;
+            } else { 
+                listEl.innerHTML += renderTaskItemStr(cat.id, block.task, activeChar); 
+            }
         });
-        const toggleBtn = document.getElementById(`btn-toggle-${cat.id}`); if(toggleBtn) toggleBtn.innerText = uiState.showCompleted[cat.id] ? '∧' : '∨';
+        
+        const toggleBtn = document.getElementById(`btn-toggle-${cat.id}`); 
+        if (toggleBtn) toggleBtn.innerText = uiState.showCompleted[cat.id] ? '∧' : '∨';
     });
 }
 
 function renderTaskItemStr(categoryId, task, activeChar) {
-    if (currentlyEditingTask && currentlyEditingTask.taskId === task.id) { return `<li class="task-item edit-mode">${getTaskFormHTML(categoryId, task, task.isGlobal)}</li>`; }
+    if (currentlyEditingTask && currentlyEditingTask.taskId === task.id) { 
+        return `<li class="task-item edit-mode">${getTaskFormHTML(categoryId, task, task.isGlobal)}</li>`; 
+    }
+    
     let isChecked = task.isShared ? !!appState.global.sharedChecks[task.id] : !!activeChar.checks[task.id];
     let isHidden = (isChecked && !uiState.showCompleted[categoryId]) || (task.isPaused && !uiState.showCompleted[categoryId]);
-    let hiddenClass = isHidden ? 'hidden-task' : ''; let pausedClass = task.isPaused ? 'paused-task' : '';
+    let hiddenClass = isHidden ? 'hidden-task' : ''; 
+    let pausedClass = task.isPaused ? 'paused-task' : '';
     let labelHTML = '';
+    
     if (task.type === 'trade') {
         let npcHTML = task.npc ? `<div class="task-npc-label">👤 ${task.npc}</div>` : '';
-        labelHTML = `<div class="trade-label-wrap">${npcHTML}<div class="trade-grid"><span class="trade-item from-item">${task.fromItem}</span><span class="trade-qty from-qty">${task.fromQty}개</span><span class="trade-arrow">→</span><span class="trade-item to-item">${task.toItem}</span><span class="trade-qty to-qty">${task.toQty}개</span></div></div>`;
-    } else { labelHTML = `<label style="flex:1; cursor:pointer; ${task.isEventInject ? 'color: var(--primary); font-weight: bold;' : ''}" for="${task.id}">${task.label}</label>`; }
-    let actionBtnsHTML = task.isEventInject ? `<div style="width: 50px; margin-left: 10px;"></div>` : `<div class="action-btns"><button class="icon-btn" onclick="editTask('${categoryId}', '${task.id}', ${task.isGlobal})" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="openDeleteModal('${categoryId}', '${task.id}', ${task.isGlobal})" title="삭제">✕</button></div>`;
-    return `<li class="task-item ${isChecked ? 'checked' : ''} ${hiddenClass} ${pausedClass}"><div class="task-content"><input type="checkbox" id="${task.id}" ${isChecked ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked, ${task.isShared}, '${categoryId}')">${labelHTML}</div>${actionBtnsHTML}</li>`;
+        labelHTML = `
+            <div class="trade-label-wrap">
+                ${npcHTML}
+                <div class="trade-grid">
+                    <span class="trade-item from-item">${task.fromItem}</span>
+                    <span class="trade-qty from-qty">${task.fromQty}개</span>
+                    <span class="trade-arrow">→</span>
+                    <span class="trade-item to-item">${task.toItem}</span>
+                    <span class="trade-qty to-qty">${task.toQty}개</span>
+                </div>
+            </div>`;
+    } else { 
+        labelHTML = `<label style="flex:1; cursor:pointer; ${task.isEventInject ? 'color: var(--primary); font-weight: bold;' : ''}" for="${task.id}">${task.label}</label>`; 
+    }
+    
+    let actionBtnsHTML = task.isEventInject 
+        ? `<div style="width: 50px; margin-left: 10px;"></div>` 
+        : `<div class="action-btns"><button class="icon-btn" onclick="editTask('${categoryId}', '${task.id}', ${task.isGlobal})" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="openDeleteModal('${categoryId}', '${task.id}', ${task.isGlobal})" title="삭제">✕</button></div>`;
+        
+    return `
+        <li class="task-item ${isChecked ? 'checked' : ''} ${hiddenClass} ${pausedClass}">
+            <div class="task-content">
+                <input type="checkbox" id="${task.id}" ${isChecked ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked, ${task.isShared}, '${categoryId}')">
+                ${labelHTML}
+            </div>
+            ${actionBtnsHTML}
+        </li>`;
 }
-
-function updateTabStatus(charId) { const char = appState.characters.find(c => c.id === charId); if(!char) return; const status = getCharCompletionStatus(char); const statusClass = status === 'red' ? 'status-red' : status === 'yellow' ? 'status-yellow' : 'status-green'; const tabBtn = document.querySelector(`.tab-btn[data-char-id="${charId}"]`); if(tabBtn) { const checkSpan = tabBtn.querySelector('.status-check'); if(checkSpan) checkSpan.className = `status-check ${statusClass}`; } }

@@ -1,8 +1,8 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
-/* =========================================================================
-   🌟 1. 테마 색상 변수 선언 (대표님의 오리지널 컬러 유지)
-========================================================================= */
+/* ==========================================
+   1. 테마 색상 변수
+========================================== */
 :root {
     --bg-color: #f4f7f6;
     --card-bg: #ffffff;
@@ -12,16 +12,14 @@
     --danger: #ff5c5c;
     --border: #dddddd;
     --tab-bg: #e0e0e0;
-    --hover-bg: #f8f9fa; /* 연한 배경용 */
-    --abyss-purple: #a64dff; /* 어비스 전용 보라색 */
+    --hover-bg: #f8f9fa; 
+    --abyss-purple: #a64dff; 
     
-    /* 이벤트 상태 배경색 */
     --ev-ongoing-bg: #e7f5ff;
     --ev-upcoming-bg: #f1f3f5;
     --ev-ended-bg: #ffe3e3;
 }
 
-/* 🌟 2. 다크 모드일 때 색상 */
 body.dark-mode {
     --bg-color: #121212;
     --card-bg: #1e1e1e;
@@ -36,29 +34,19 @@ body.dark-mode {
     --ev-ended-bg: #4a191c;
 }
 
-/* =========================================================================
-   🌟 3. 로딩 스피너 및 페이드인 애니메이션 (빈 화면 방지)
-========================================================================= */
+/* ==========================================
+   2. 로딩 애니메이션 및 컨테이너
+========================================== */
 .spinner-overlay { 
-    position: fixed; 
-    top: 0; left: 0; width: 100%; height: 100%; 
-    background-color: var(--bg-color); 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
-    z-index: 10000; 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background-color: var(--bg-color); display: flex; flex-direction: column; 
+    justify-content: center; align-items: center; z-index: 10000; 
     transition: opacity 0.3s, visibility 0.3s; 
 }
-.spinner-overlay.fade-out { 
-    opacity: 0; 
-    visibility: hidden; 
-}
+.spinner-overlay.fade-out { opacity: 0; visibility: hidden; }
 .spinner { 
-    width: 40px; height: 40px; 
-    border: 4px solid var(--border); 
-    border-top: 4px solid var(--primary); 
-    border-radius: 50%; 
+    width: 40px; height: 40px; border: 4px solid var(--border); 
+    border-top: 4px solid var(--primary); border-radius: 50%; 
     animation: spin 1s linear infinite; 
 }
 @keyframes spin { 
@@ -66,43 +54,25 @@ body.dark-mode {
     100% { transform: rotate(360deg); } 
 }
 .spinner-overlay p { 
-    margin-top: 15px; 
-    font-weight: bold; 
-    color: var(--text-main); 
-    font-size: 0.95rem; 
+    margin-top: 15px; font-weight: bold; color: var(--text-main); font-size: 0.95rem; 
 }
-
-/* 초기 상태 숨김 및 불러오기 완료 시 페이드인 효과 */
 .container { 
-    width: 100%; 
-    max-width: 1200px; 
-    opacity: 0; 
-    transition: opacity 0.4s ease-in-out; 
+    width: 100%; max-width: 1200px; opacity: 0; transition: opacity 0.4s ease-in-out; 
 }
-.container.loaded { 
-    opacity: 1; 
-}
+.container.loaded { opacity: 1; }
 
-/* =========================================================================
-   🌟 4. 기본 레이아웃 및 카드 (대표님 커스텀 100% 유지)
-========================================================================= */
+/* ==========================================
+   3. 레이아웃 및 카드
+========================================== */
 body { 
     font-family: 'Pretendard', 'Malgun Gothic', sans-serif; 
-    background-color: var(--bg-color); 
-    color: var(--text-main); 
-    margin: 0; 
-    padding: 20px; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    transition: background-color 0.3s, color 0.3s; 
+    background-color: var(--bg-color); color: var(--text-main); 
+    margin: 0; padding: 20px; display: flex; flex-direction: column; 
+    align-items: center; transition: background-color 0.3s, color 0.3s; 
 }
-
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; width: 100%; }
-
 .top-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; width: 100%; }
 @media (max-width: 768px) { .top-grid { grid-template-columns: 1fr; } }
-
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px; }
 .char-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 @media (max-width: 768px) { .char-grid { grid-template-columns: 1fr; } }
@@ -111,21 +81,19 @@ body {
 .card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); transition: background-color 0.3s, border-color 0.3s; }
 .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 15px; }
 .card-header h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; font-weight: 800; }
-
 .toggle-group { display: flex; gap: 5px; align-items: center; }
 .toggle-btn { background: none; border: none; font-size: 1.1rem; font-weight: 800; cursor: pointer; color: var(--text-muted); padding: 0 5px; transition: 0.2s; }
 .toggle-btn:hover { color: var(--primary); }
 
-/* =========================================================================
-   🌟 5. 캐릭터 탭 및 숙제 리스트
-========================================================================= */
+/* ==========================================
+   4. 캐릭터 탭 및 숙제 리스트
+========================================== */
 .tabs-container { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 20px; padding-bottom: 5px; align-items: center; width: 100%; }
 .tab-btn { background-color: var(--tab-bg); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; color: var(--text-main); white-space: nowrap; transition: 0.2s; }
 .tab-btn.active { background-color: var(--primary); color: white; }
 .tab-btn.active:hover { filter: brightness(1.1); }
 .tab-add-btn { background-color: var(--card-bg); border: 2px dashed var(--border); color: var(--text-muted); }
 
-/* 다크모드 대응 그림자 */
 .status-check { margin-left: 4px; font-size: 1rem; font-weight: 900; text-shadow: -1px -1px 0 var(--card-bg), 1px -1px 0 var(--card-bg), -1px 1px 0 var(--card-bg), 1px 1px 0 var(--card-bg); }
 .status-red { color: var(--danger); }
 .status-yellow { color: #fcc419; }
@@ -134,7 +102,6 @@ body {
 .task-list { list-style: none; padding: 0; margin: 0; }
 .task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); transition: background-color 0.2s; }
 .task-item.edit-mode { flex-direction: column; align-items: stretch; border: none; padding: 0; }
-
 .task-content { display: flex; align-items: center; flex: 1; width: 100%; overflow: hidden; }
 .task-item.checked span:not(.ev-status-ended), .task-item.checked label, .task-item.checked .trade-grid { text-decoration: line-through; color: var(--text-muted) !important; }
 .task-item.paused-task { opacity: 0.4; background-color: var(--hover-bg); border-radius: 6px; }
@@ -146,12 +113,11 @@ body {
 .icon-btn:hover { color: var(--primary); }
 .delete-btn:hover { color: var(--danger); }
 
-/* =========================================================================
-   🌟 6. 추가 폼 및 인풋
-========================================================================= */
+/* ==========================================
+   5. 입력 폼 UI
+========================================== */
 .add-wrap { margin-bottom: 15px; }
 .hidden { display: none !important; }
-
 .target-chars-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .char-chip { padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-muted); font-size: 0.8rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
 .char-chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
@@ -171,9 +137,9 @@ body {
 .checkbox-label { display: inline-flex !important; align-items: center !important; justify-content: flex-start !important; gap: 5px !important; width: auto !important; flex: 0 0 auto !important; font-size: 0.9rem; cursor: pointer; font-weight: bold; color: var(--primary); white-space: nowrap; margin-right: 5px; }
 .checkbox-label input[type="checkbox"] { flex: none !important; width: 16px !important; height: 16px !important; margin: 0 !important; cursor: pointer; }
 
-/* =========================================================================
-   🌟 7. 마을 그룹 & 물물교환 그리드
-========================================================================= */
+/* ==========================================
+   6. 그룹(마을) 및 물물교환 그리드
+========================================== */
 .town-group-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; margin: 15px 0 5px 0; background: var(--hover-bg); border-radius: 6px; border-left: 4px solid var(--primary); }
 .town-title { font-weight: 900; font-size: 1rem; display: flex; align-items: center; }
 .town-task-list { list-style: none; padding-left: 15px; margin: 0; }
@@ -202,9 +168,9 @@ body {
     .to-qty { grid-area: toQty; text-align: right; padding-right: 5px; }
 }
 
-/* =========================================================================
-   🌟 8. 이벤트 레이아웃
-========================================================================= */
+/* ==========================================
+   7. 이벤트 레이아웃
+========================================== */
 .event-list { list-style: none; padding: 0; margin: 0; }
 .event-item { border-bottom: 1px dashed var(--border); padding: 5px 0; }
 .event-grid { display: grid; grid-template-columns: 120px minmax(150px, 1.5fr) 190px minmax(120px, 1fr) minmax(100px, 1fr) 60px; grid-template-areas: "period title days memo1 memo2 actions"; align-items: center; gap: 10px; width: 100%; }
@@ -235,9 +201,9 @@ span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; w
     .col-actions { align-self: end; }
 }
 
-/* =========================================================================
-   🌟 9. 어비스 구멍 전용 스타일
-========================================================================= */
+/* ==========================================
+   8. 어비스 구멍 디자인
+========================================== */
 .btn-schedule-toggle { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; font-weight: bold; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s; }
 .btn-schedule-toggle:hover { background: var(--hover-bg); }
 
@@ -258,9 +224,9 @@ span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; w
 .timeline-item.future-time::before { background: var(--abyss-purple); }
 .timeline-item.past-time { text-decoration: line-through; opacity: 0.4; }
 
-/* =========================================================================
-   🌟 10. 모달창 & 토스트 알림 
-========================================================================= */
+/* ==========================================
+   9. 모달 및 토스트 알림
+========================================== */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.2s; }
 .modal-overlay.show { opacity: 1; pointer-events: auto; }
 .modal-box { background: var(--card-bg); padding: 25px; border-radius: 12px; width: 90%; max-width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; }
@@ -272,11 +238,35 @@ span.col-memo1, span.col-memo2 { color: var(--text-muted); font-size: 0.95rem; w
 .btn-del-all { background: var(--danger); color: white; }
 .btn-del-all:hover { filter: brightness(0.9); }
 .btn-del-cancel { background: none; color: var(--text-muted); margin-bottom: 0; }
-
 .tab-hint { font-size: 0.75rem; color: var(--text-muted); margin-left: 10px; white-space: nowrap; font-weight: normal; }
 
-/* 예쁜 토스트 알림 */
 #toast-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .toast { background: rgba(0, 0, 0, 0.8); color: white; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); text-align: center; white-space: nowrap; }
 .toast.show { opacity: 1; transform: translateY(0); }
 body.dark-mode .toast { background: rgba(255, 255, 255, 0.9); color: black; }
+
+/* ==========================================
+   10. 유틸리티 클래스 (인라인 속성 대체)
+========================================== */
+.header-actions-wrap { display: flex; gap: 8px; align-items: center; }
+.auth-btn-style { font-size: 1.2rem; cursor: pointer; border: none; background: none; }
+.theme-toggle-style { font-size: 1.5rem; background: none; border: none; cursor: pointer; }
+
+.card-abyss-custom { padding-top: 15px; }
+.header-no-border { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.abyss-title-text { font-size: 1.2rem; }
+
+.notice-list-custom { max-height: 110px; overflow-y: auto; padding-right: 5px; }
+
+.mt-10 { margin-top: 10px; }
+.w-100 { width: 100%; }
+.flex-2 { flex: 2; }
+
+.modal-box-small { padding: 20px; max-width: 250px; }
+.modal-title-small { font-size: 1.05rem; margin-bottom: 12px; }
+.modal-input-styled { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none; }
+.modal-btn-row { display: flex; gap: 8px; margin-bottom: 0; }
+.modal-btn-row-spaced { display: flex; gap: 8px; margin-bottom: 12px; }
+.modal-btn-primary-styled { flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white; }
+.modal-btn-secondary-styled { flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: #e9ecef; color: var(--text-main); }
+.btn-text-danger { background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 4px; }
