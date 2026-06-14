@@ -2,18 +2,48 @@
 // 🌟 1. Firebase 환경 설정 (본인의 키값으로 유지해주세요)
 // =========================================================================
 const firebaseConfig = {
-        apiKey: "AIzaSyCYs0C4Z-7WFPoZGf2TSWTna9gnLKYTHt8",
-        authDomain: "mobi-checker.firebaseapp.com",
-        projectId: "mobi-checker",
-        storageBucket: "mobi-checker.firebasestorage.app",
-        messagingSenderId: "558569400000",
-        appId: "1:558569400000:web:85f63f71131ab4f0582f25"
-    };
+    apiKey: "AIzaSyCYs0C4Z-7WFPoZGf2TSWTna9gnLKYTHt8",
+    authDomain: "mobi-checker.firebaseapp.com",
+    projectId: "mobi-checker",
+    storageBucket: "mobi-checker.firebasestorage.app",
+    messagingSenderId: "558569400000",
+    appId: "1:558569400000:web:85f63f71131ab4f0582f25"
+};
 
 if (!firebase.apps.length) {
     try { firebase.initializeApp(firebaseConfig); } catch(e) { console.error("Firebase 초기화 에러:", e); }
 }
 const db = firebase.firestore();
+
+// 🌟 오프라인 지속성 
+db.enablePersistence().catch(err => {
+    console.warn("오프라인 모드 활성화 실패:", err);
+});
+
+// 🌟 다크모드 로직
+function initDarkMode() {
+    const savedTheme = localStorage.getItem('theme');
+    if(savedTheme === 'dark') { document.body.classList.add('dark-mode'); document.getElementById('theme-toggle').innerText = '☀️'; }
+}
+function toggleDarkMode() {
+    const isDark = document.body.classList.toggle('dark-mode');
+    document.getElementById('theme-toggle').innerText = isDark ? '☀️' : '🌙';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+initDarkMode();
+
+// 🌟 예쁜 토스트 알림 로직 (기존 showToast 대체)
+function showToast(msg) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerText = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
+}
+
 const docRef = db.collection("mabi_tracker").doc("my_data"); 
 
 const genId = () => Math.random().toString(36).substr(2, 9);
@@ -62,15 +92,15 @@ let notifiedAbyssTime = null;
 // --- 🌟 알림 권한 요청 ---
 function requestNotificationPermission() {
     if (!("Notification" in window)) {
-        alert("이 브라우저는 알림 기능을 지원하지 않습니다.");
+        showToast("이 브라우저는 알림 기능을 지원하지 않습니다.");
         return;
     }
     Notification.requestPermission().then(permission => {
         if (permission === "granted") {
-            alert("🔔 알림이 켜졌습니다! 어비스 구멍 시간이 되면 알려드릴게요.");
+            showToast("🔔 알림이 켜졌습니다! 어비스 구멍 시간이 되면 알려드릴게요.");
             new Notification("마비노기 모바일 트래커", { body: "이렇게 알림이 올 거예요!" });
         } else {
-            alert("알림이 차단되어 있습니다. 브라우저 주소창 왼쪽 자물쇠 아이콘에서 알림을 허용해주세요.");
+            showToast("알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요.");
         }
     });
 }
@@ -98,13 +128,20 @@ function renderAbyssSchedule() {
     const baseDate = new Date(baseTimeStr);
     if(isNaN(baseDate.getTime())) return;
 
-    const intervalMs = 130500000; 
+    const intervalMs = 130500000; // 36시간 15분
     const timelineEl = document.getElementById('abyss-timeline');
     timelineEl.innerHTML = '';
 
+    let nowMs = Date.now();
+    let baseMs = baseDate.getTime();
+    
+    let elapsed = nowMs - baseMs;
+    let cycles = Math.floor(elapsed / intervalMs);
+    if (cycles < 0) cycles = 0; 
+
     let times = [];
-    for(let i=0; i<5; i++) {
-        times.push(new Date(baseDate.getTime() + i * intervalMs));
+    for(let i = 0; i < 5; i++) {
+        times.push(new Date(baseMs + (cycles + i) * intervalMs));
     }
 
     let nextTime = times.find(t => t.getTime() > Date.now());
@@ -164,11 +201,88 @@ function toggleAbyssSchedule() {
 
 function saveAbyssTime() {
     const val = document.getElementById('input-abyss').value; 
-    if(!val) { alert('시간을 선택해주세요.'); return; }
+    if(!val) { showToast('시간을 선택해주세요.'); return; }
     
     appState.global.abyss.baseTime = new Date(val).toISOString();
     document.getElementById('add-wrap-abyss').classList.add('hidden');
     saveData(); renderGlobal();
+}
+
+// --- 🌟 이벤트 파서 (근접성 기반 스마트 연도 추론) ---
+function getEventStatusClass(periodStr) {
+    try {
+        if (!periodStr) return 'ev-status-ongoing';
+        const parts = periodStr.split('~').map(s => s.trim());
+        
+        const startStr = parts[0] || '';
+        const endStr = parts.length > 1 ? parts[1] : '';
+
+        const now = new Date(); 
+        const currentYear = now.getFullYear();
+
+        // 1. 단순 추출
+        function extractRaw(dStr) {
+            if (!dStr) return null;
+            const dParts = dStr.split(/[./-]/);
+            if (dParts.length === 2) return { hasYear: false, m: parseInt(dParts[0]), d: parseInt(dParts[1]) };
+            if (dParts.length === 3) {
+                let y = parseInt(dParts[0]); if (y < 100) y += 2000;
+                return { hasYear: true, y: y, m: parseInt(dParts[1]), d: parseInt(dParts[2]) };
+            }
+            return null;
+        }
+
+        let sRaw = extractRaw(startStr);
+        let eRaw = extractRaw(endStr);
+
+        // 2. 가장 가까운 연도 찾기 로직
+        function inferYear(m, d) {
+            const d1 = new Date(currentYear - 1, m - 1, d);
+            const d2 = new Date(currentYear, m - 1, d);
+            const d3 = new Date(currentYear + 1, m - 1, d);
+
+            const diff1 = Math.abs(now - d1);
+            const diff2 = Math.abs(now - d2);
+            const diff3 = Math.abs(now - d3);
+
+            let minDiff = Math.min(diff1, diff2, diff3);
+            if (minDiff === diff2) return currentYear;
+            if (minDiff === diff1) return currentYear - 1;
+            return currentYear + 1;
+        }
+
+        let startDate = null;
+        let endDate = null;
+
+        // 3. 연도 동기화
+        if (sRaw && eRaw) {
+            if (!eRaw.hasYear && !sRaw.hasYear) {
+                // 종료일 기준으로 연도를 잡고, 역산
+                let inferredEndYear = inferYear(eRaw.m, eRaw.d);
+                eRaw.y = inferredEndYear;
+                if (sRaw.m > eRaw.m) sRaw.y = inferredEndYear - 1; 
+                else sRaw.y = inferredEndYear;
+            } else if (!sRaw.hasYear && eRaw.hasYear) {
+                if (sRaw.m > eRaw.m) sRaw.y = eRaw.y - 1;
+                else sRaw.y = eRaw.y;
+            } else if (sRaw.hasYear && !eRaw.hasYear) {
+                if (sRaw.m > eRaw.m) eRaw.y = sRaw.y + 1;
+                else eRaw.y = sRaw.y;
+            }
+        } else {
+            if (sRaw && !sRaw.hasYear) sRaw.y = inferYear(sRaw.m, sRaw.d);
+            if (eRaw && !eRaw.hasYear) eRaw.y = inferYear(eRaw.m, eRaw.d);
+        }
+
+        if (sRaw) startDate = new Date(sRaw.y, sRaw.m - 1, sRaw.d, 0, 0, 0);
+        if (eRaw) endDate = new Date(eRaw.y, eRaw.m - 1, eRaw.d, 23, 59, 59);
+
+        // 4. 상태 판정
+        if (endDate && now > endDate) return 'ev-status-ended';
+        if (startDate && now < startDate) return 'ev-status-upcoming';
+        return 'ev-status-ongoing'; 
+
+    } catch(e) { return 'ev-status-ongoing'; }
 }
 
 // --- 🌟 상태 및 진행도 ---
@@ -406,29 +520,6 @@ function getTaskFormHTML(categoryId, task = null, isGlobal = true) {
     `;
 }
 
-function getEventStatusClass(periodStr) {
-    try {
-        if (!periodStr) return 'ev-status-ongoing';
-        const parts = periodStr.split('~').map(s => s.trim());
-        if (parts.length !== 2) return 'ev-status-ongoing';
-        const now = new Date(); const currentYear = now.getFullYear();
-        function parseDate(dStr, isEnd) {
-            const dParts = dStr.split(/[./-]/);
-            if (dParts.length === 2) return new Date(currentYear, parseInt(dParts[0])-1, parseInt(dParts[1]), isEnd?23:0, isEnd?59:0, isEnd?59:0);
-            if (dParts.length === 3) {
-                let y = parseInt(dParts[0]); if (y < 100) y += 2000;
-                return new Date(y, parseInt(dParts[1])-1, parseInt(dParts[2]), isEnd?23:0, isEnd?59:0, isEnd?59:0);
-            }
-            return null;
-        }
-        const startDate = parseDate(parts[0], false); const endDate = parseDate(parts[1], true);
-        if (!startDate || !endDate) return 'ev-status-ongoing';
-        if (now < startDate) return 'ev-status-upcoming'; 
-        if (now > endDate) return 'ev-status-ended';     
-        return 'ev-status-ongoing'; 
-    } catch(e) { return 'ev-status-ongoing'; }
-}
-
 // --- 🌟 전체 렌더링 ---
 function renderAll() { renderGlobal(); renderTabs(); renderTaskCards(); renderCharacterTasks(); }
 
@@ -486,7 +577,7 @@ function renderTabs() {
         const btn = document.createElement('button');
         const isActive = appState.activeTabId === char.id;
         btn.className = `tab-btn ${isActive ? 'active' : ''}`;
-        if(isActive) btn.title = "한 번 더 누르면 이름을 변경합니다";
+        if(isActive) btn.title = "한 번 더 누르면 설정을 엽니다";
         
         const status = getCharCompletionStatus(char);
         let statusClass = '';
@@ -495,12 +586,18 @@ function renderTabs() {
         else if(status === 'green') statusClass = 'status-green';
 
         btn.innerHTML = `${char.name} <span class="status-check ${statusClass}">✔</span>`;
-        btn.onclick = () => { isActive ? renameCharacter(char.id) : switchTab(char.id); };
+        btn.dataset.charId = char.id;  // 🌟 [추가됨] 부분 렌더링 업데이트를 위한 탭 식별표
+        btn.onclick = () => { isActive ? manageCharacter(char.id) : switchTab(char.id); };
         container.appendChild(btn);
     });
     const addBtn = document.createElement('button');
     addBtn.className = 'tab-btn tab-add-btn'; addBtn.innerText = '+ 캐릭 추가'; addBtn.onclick = addNewCharacter;
     container.appendChild(addBtn);
+
+    const hint = document.createElement('span');
+    hint.className = 'tab-hint';
+    hint.innerHTML = '💡 활성화된 탭 한 번 더 클릭 시 설정';
+    container.appendChild(hint);
 }
 
 function renderTaskCards() {
@@ -639,10 +736,11 @@ function renderTaskItemStr(categoryId, task, activeChar) {
         </div>
     `;
     
+    // 🌟 [추가됨] toggleTask 실행 시 categoryId 인자를 넘겨서 DOM 부분 업데이트가 완벽하게 작동하도록 함
     return `
         <li class="task-item ${isChecked ? 'checked' : ''} ${hiddenClass} ${pausedClass}">
             <div class="task-content">
-                <input type="checkbox" id="${task.id}" ${isChecked ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked, ${task.isShared})">
+                <input type="checkbox" id="${task.id}" ${isChecked ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked, ${task.isShared}, '${categoryId}')">
                 ${labelHTML}
             </div>
             ${actionBtnsHTML}
@@ -733,7 +831,7 @@ document.addEventListener('click', function(event) {
     if (currentlyEditingTask) cancelEdit(currentlyEditingTask.categoryId, currentlyEditingTask.taskId);
 });
 
-// --- 🌟 이벤트 관리 함수 ---
+// --- 🌟 이벤트 폼 관련 함수 ---
 function closeEventForm() {
     document.getElementById('add-wrap-event').classList.add('hidden');
     resetEventForm();
@@ -758,7 +856,7 @@ function toggleEventInput() {
         <div class="inline-form-box">
             ${chipsHtml}
             <div class="form-row">
-                <input type="text" id="input-ev-period" placeholder="기간 (06.01 ~ 06.30)" style="max-width: 150px;">
+                <input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" style="max-width: 250px;">
                 <input type="text" id="input-ev-title" placeholder="이벤트 제목">
             </div>
             <div class="form-row day-selector" id="event-day-selector">
@@ -794,7 +892,7 @@ function editEvent(id) {
         <div class="inline-form-box">
             ${chipsHtml}
             <div class="form-row">
-                <input type="text" id="input-ev-period" placeholder="기간 (06.01 ~ 06.30)" style="max-width: 150px;" value="${ev.period || ''}">
+                <input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" style="max-width: 250px;" value="${ev.period || ''}">
                 <input type="text" id="input-ev-title" placeholder="이벤트 제목" value="${ev.title || ''}">
             </div>
             <div class="form-row day-selector" id="event-day-selector">
@@ -820,13 +918,13 @@ function submitEvent() {
     const title = document.getElementById('input-ev-title').value.trim();
     const memo1 = document.getElementById('input-ev-memo1').value.trim(); 
     const memo2 = document.getElementById('input-ev-memo2').value.trim();
-    if (!title) { alert('이벤트 제목은 필수입니다.'); return; }
+    if (!title) { showToast('이벤트 제목은 필수입니다.'); return; }
     const days = [...selectedEventDays];
 
     const tid = editingEventId || 'new';
     const chipWrap = document.getElementById(`chips-event-${tid}`);
     const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId);
-    if (selectedCharIds.length === 0) { alert('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
+    if (selectedCharIds.length === 0) { showToast('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
     const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
 
     if (editingEventId) {
@@ -912,15 +1010,15 @@ function saveTask(categoryId, taskId, isGlobal) {
         fromQty = Number(document.getElementById(`from-qty-${fid}`).value);
         toItem = document.getElementById(`to-${fid}`).value.trim(); 
         toQty = Number(document.getElementById(`to-qty-${fid}`).value);
-        if (!fromItem || !fromQty || !toItem || !toQty) { alert('교환 정보를 모두 입력하세요.'); return; }
+        if (!fromItem || !fromQty || !toItem || !toQty) { showToast('교환 정보를 모두 입력하세요.'); return; }
     } else {
         label = document.getElementById(`label-${fid}`).value.trim();
-        if (!label) { alert('내용을 입력하세요.'); return; }
+        if (!label) { showToast('내용을 입력하세요.'); return; }
     }
 
     const chipWrap = document.getElementById(`chips-${fid}`);
     const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId);
-    if (selectedCharIds.length === 0) { alert('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
+    if (selectedCharIds.length === 0) { showToast('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
     const isAll = selectedCharIds.length === appState.characters.length;
     
     if (town && !appState.global.towns[categoryId][town]) { appState.global.towns[categoryId][town] = { order: Date.now(), color: pastelColors[0] }; }
@@ -950,17 +1048,50 @@ function saveTask(categoryId, taskId, isGlobal) {
     saveData(); renderTabs(); renderCharacterTasks();
 }
 
-function toggleTask(taskId, isChecked, isShared) {
+function updateTabStatus(charId) {
+    const char = appState.characters.find(c => c.id === charId);
+    if(!char) return;
+    const status = getCharCompletionStatus(char);
+    const statusClass = status === 'red' ? 'status-red' : status === 'yellow' ? 'status-yellow' : 'status-green';
+    
+    const tabBtn = document.querySelector(`.tab-btn[data-char-id="${charId}"]`);
+    if(tabBtn) {
+        const checkSpan = tabBtn.querySelector('.status-check');
+        if(checkSpan) checkSpan.className = `status-check ${statusClass}`;
+    }
+}
+
+// 🌟 최적화된 체크박스 토글 함수
+function toggleTask(taskId, isChecked, isShared, categoryId) {
+    // 1. 데이터 업데이트
     if (isShared) { appState.global.sharedChecks[taskId] = isChecked; } 
     else { appState.characters.find(c => c.id === appState.activeTabId).checks[taskId] = isChecked; }
-    saveData(); renderTabs(); renderCharacterTasks();
+    saveData(); 
+    
+    // 2. 화면 전체를 그리지 않고 해당 요소만 즉시 DOM 업데이트 (깜빡임 완벽 제거)
+    const checkbox = document.getElementById(taskId);
+    if(checkbox) {
+        const li = checkbox.closest('.task-item');
+        if(li) {
+            if(isChecked) li.classList.add('checked');
+            else li.classList.remove('checked');
+
+            if(!uiState.showCompleted[categoryId]) {
+                if(isChecked) li.classList.add('hidden-task');
+                else li.classList.remove('hidden-task');
+            }
+        }
+    }
+    
+    // 3. 탭 버튼의 체크 상태(색상) 갱신
+    updateTabStatus(appState.activeTabId);
 }
 
 // --- 🌟 공지사항 및 메모 관련 ---
 function addNotice() {
     const title = document.getElementById('input-notice-title').value.trim();
     let url = document.getElementById('input-notice-url').value.trim();
-    if(!title) { alert('공지 제목을 입력하세요.'); return; }
+    if(!title) { showToast('공지 제목을 입력하세요.'); return; }
     if (url && !url.startsWith('http://') && !url.startsWith('https://')) { url = 'https://' + url; }
     appState.global.notices.unshift({ id: genId(), title, url });
     document.getElementById('input-notice-title').value = ''; document.getElementById('input-notice-url').value = '';
@@ -974,10 +1105,60 @@ function deleteNotice(id) {
 
 function addMemo() { const val = document.getElementById('input-memo').value.trim(); if (!val) return; appState.global.memo.push({ id: genId(), label: val }); document.getElementById('input-memo').value = ''; document.getElementById('add-wrap-memo').classList.add('hidden'); saveData(); renderGlobal(); }
 
-// --- 🌟 기타 전역 및 캐릭터 함수 ---
+// --- 🌟 기타 캐릭터 모달 제어 함수 ---
+let managingCharId = null;
+
 function switchTab(charId) { appState.activeTabId = charId; currentlyEditingTask = null; saveData(); renderTabs(); renderCharacterTasks(); }
-function addNewCharacter() { const name = prompt("새 캐릭터의 이름을 입력하세요:"); if (name) { appState.characters.push({ id: genId(), name: name, checks: {}, customTasks: { 'daily': [], 'daily-trade': [], 'weekly': [], 'weekly-trade': [] }, hiddenTasks: [] }); appState.activeTabId = appState.characters[appState.characters.length-1].id; saveData(); renderAll(); } }
-function renameCharacter(charId) { const char = appState.characters.find(c => c.id === charId); if (!char) return; const newName = prompt("캐릭터의 새 닉네임을 입력하세요:", char.name); if (newName !== null && newName.trim() !== "") { char.name = newName.trim(); saveData(); renderTabs(); } }
+
+function addNewCharacter() { 
+    document.getElementById('char-add-name').value = ''; 
+    document.getElementById('char-add-modal').classList.add('show'); 
+    setTimeout(() => document.getElementById('char-add-name').focus(), 100); 
+}
+
+function closeCharAddModal() { document.getElementById('char-add-modal').classList.remove('show'); }
+
+function submitNewCharacter() {
+    const nameInput = document.getElementById('char-add-name');
+    const name = nameInput.value.trim();
+    if (name) { 
+        appState.characters.push({ id: genId(), name: name, checks: {}, customTasks: { 'daily': [], 'daily-trade': [], 'weekly': [], 'weekly-trade': [] }, hiddenTasks: [] }); 
+        appState.activeTabId = appState.characters[appState.characters.length-1].id; 
+        saveData(); renderAll(); closeCharAddModal();
+    } else { showToast("캐릭터 이름을 입력해주세요."); nameInput.focus(); }
+}
+
+function manageCharacter(charId) { 
+    const char = appState.characters.find(c => c.id === charId); 
+    if (!char) return; 
+    managingCharId = charId;
+    document.getElementById('char-edit-name').value = char.name; 
+    document.getElementById('char-modal').classList.add('show');
+}
+
+function closeCharModal() { managingCharId = null; document.getElementById('char-modal').classList.remove('show'); }
+
+function saveCharacterName() {
+    if (!managingCharId) return;
+    const newName = document.getElementById('char-edit-name').value.trim();
+    if (newName) {
+        const char = appState.characters.find(c => c.id === managingCharId);
+        if (char) char.name = newName;
+        saveData(); renderTabs();
+    }
+    closeCharModal();
+}
+
+function deleteCharacter() {
+    if (!managingCharId) return;
+    if (appState.characters.length <= 1) { showToast("최소 1개의 캐릭터는 남겨두어야 합니다."); return; }
+    const char = appState.characters.find(c => c.id === managingCharId);
+    if (confirm(`정말 [${char.name}] 캐릭터를 삭제하시겠습니까?\n이 캐릭터의 모든 숙제 체크 내역이 사라집니다.`)) {
+        appState.characters = appState.characters.filter(c => c.id !== managingCharId);
+        appState.activeTabId = appState.characters[0].id; 
+        saveData(); renderAll(); closeCharModal();
+    }
+}
 
 function deleteGlobal(type, id) { if (!confirm("삭제하시겠습니까?")) return; appState.global[type] = appState.global[type].filter(i => i.id !== id); saveData(); renderTabs(); renderGlobal(); renderCharacterTasks(); }
 function openDeleteModal(category, taskId, isGlobal) { deleteTarget = { category, taskId, isGlobal }; document.getElementById('delete-modal').classList.add('show'); }

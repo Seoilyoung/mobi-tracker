@@ -10,12 +10,14 @@
     <link rel="stylesheet" href="style.css">
     <script src="app.js"></script>
 </head>
+
 <body>
 
 <div class="container">
-    <div class="header">
+    <header>
         <h1>마비노기 모바일 트래커</h1>
-    </div>
+        <button id="theme-toggle" class="icon-btn" onclick="toggleDarkMode()" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 1.5rem; background: none; border: none; cursor: pointer;" title="테마 변경">🌙</button>
+    </header>
 
     <div class="top-grid">
         <div class="card" style="padding-top: 15px;">
@@ -98,7 +100,20 @@
     <div class="char-grid" id="character-content"></div>
 </div>
 
-<div class="modal-overlay" id="delete-modal">
+<div class="modal-overlay" id="char-add-modal" onclick="if(event.target === this) closeCharAddModal()">
+    <div class="modal-box" style="padding: 20px; max-width: 250px;">
+        <h3 style="font-size: 1.05rem; margin-bottom: 12px;">새 캐릭터 추가</h3>
+        
+        <input type="text" id="char-add-name" placeholder="새 캐릭터 이름" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none;" onkeypress="if(event.key==='Enter') submitNewCharacter()">
+        
+        <div style="display: flex; gap: 8px; margin-bottom: 0;">
+            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white;" onclick="submitNewCharacter()">추가</button>
+            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--border); color: var(--text-main);" onclick="closeCharAddModal()">취소</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="delete-modal" onclick="if(event.target === this) closeDeleteModal()">
     <div class="modal-box">
         <h3>항목 삭제</h3>
         <p>어떻게 삭제하시겠습니까?<br>(개별 삭제 시 이 캐릭터의 화면에서만 숨겨집니다.)</p>
@@ -107,6 +122,23 @@
         <button class="modal-btn btn-del-cancel" onclick="closeDeleteModal()">취소</button>
     </div>
 </div>
+
+<div class="modal-overlay" id="char-modal" onclick="if(event.target === this) closeCharModal()">
+    <div class="modal-box" style="padding: 20px; max-width: 250px;">
+        <h3 style="font-size: 1.05rem; margin-bottom: 12px;">캐릭터 설정</h3>
+        
+        <input type="text" id="char-edit-name" placeholder="캐릭터 이름" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; text-align: center; outline: none;" onkeypress="if(event.key==='Enter') saveCharacterName()">
+        
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white;" onclick="saveCharacterName()">저장</button>
+            <button class="modal-btn" style="flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--border); color: var(--text-main);" onclick="closeCharModal()">취소</button>
+        </div>
+        
+        <button style="background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 4px;" onclick="deleteCharacter()">이 캐릭터 삭제</button>
+    </div>
+</div>
+
+<div id="toast-container"></div>
 
 </body>
 </html>
