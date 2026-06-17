@@ -274,3 +274,9 @@ body.dark-mode .toast { background: rgba(255, 255, 255, 0.9); color: black; }
 .modal-btn-primary-styled { flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: var(--primary); color: white; }
 .modal-btn-secondary-styled { flex: 1; padding: 8px; margin: 0; font-size: 0.9rem; background: #e9ecef; color: var(--text-main); }
 .btn-text-danger { background: none; border: none; color: var(--danger); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 4px; }
+
+.event-grid .col-period {
+    white-space: normal !important; /* 가로로 한 줄로만 뻗으려는 고집 꺾기 */
+    word-break: keep-all; /* 단어 중간에서 흉하게 반토막 나지 않도록 보호 */
+    line-height: 1.3; /* 위아래로 줄이 나뉘었을 때 텍스트 간격 예쁘게 조절 */
+}
