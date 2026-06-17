@@ -84,32 +84,24 @@ function cancelEdit(categoryId, taskId) {
 function toggleTask(taskId, isChecked, isShared, categoryId) {
     updateAppState(() => {
         if (isShared) appState.global.sharedChecks[taskId] = isChecked; else appState.characters.find(c => c.id === appState.activeTabId).checks[taskId] = isChecked; 
-    }, []); // DOM은 수동으로만 조작하므로 렌더 함수 제외
+    }, []); 
     
     const checkbox = document.getElementById(taskId); 
     if (checkbox) { 
         const li = checkbox.closest('.task-item'); 
         if (li) { 
             isChecked ? li.classList.add('checked') : li.classList.remove('checked'); 
-            
-            // 1. 해당 숙제 한 줄(item) 숨기기/보이기
             if (!uiState.showCompleted[categoryId]) { 
                 isChecked ? li.classList.add('hidden-task') : li.classList.remove('hidden-task'); 
             } 
-            
-            // 🌟 [추가됨] 2. 해당 숙제가 속한 마을(그룹) 헤더 숨김 처리 로직
-            const subList = li.closest('.town-task-list'); // 이 숙제가 마을 리스트에 포함되어 있나?
+            const subList = li.closest('.town-task-list'); 
             if (subList) {
-                const header = subList.previousElementSibling; // 바로 위에 있는 마을 헤더를 찾음
+                const header = subList.previousElementSibling; 
                 if (header && header.classList.contains('town-group-header')) {
-                    // 이 마을 안에 현재 화면에 보이는 숙제(`.hidden-task` 클래스가 없는 숙제)가 몇 개인지 확인
                     const visibleTasks = subList.querySelectorAll('.task-item:not(.hidden-task)');
-                    
                     if (visibleTasks.length === 0) {
-                        // 보이는 숙제가 하나도 없다면 마을 헤더도 숨김
                         header.classList.add('hidden');
                     } else {
-                        // 보이는 숙제가 하나라도 생겼다면 마을 헤더를 보임 (체크 해제 시 대응)
                         header.classList.remove('hidden');
                     }
                 }
@@ -170,7 +162,7 @@ function toggleEventInput() {
     const wrap = document.getElementById(`add-wrap-event`); 
     if (!wrap.classList.contains('hidden') && editingEventId === null) { closeEventForm(); return; }
     resetEventForm(); wrap.classList.remove('hidden');
-    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-new">`; appState.characters.forEach(c => { chipsHtml += `<div class="char-chip selected" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`; }); chipsHtml += `</div>`;
+    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-new">`; appState.characters.forEach(c => { chipsHtml += `<div class="char-chip selected" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${escapeHTML(c.name)}</div>`; }); chipsHtml += `</div>`;
     wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}<div class="form-row"><input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100"><input type="text" id="input-ev-title" placeholder="이벤트 제목"></div><div class="form-row day-selector" id="event-day-selector">${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}</div><div class="form-row"><input type="text" id="input-ev-memo1" placeholder="메모 1"><input type="text" id="input-ev-memo2" placeholder="메모 2"></div><div class="form-actions"><button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button><button type="button" class="btn-submit" onclick="submitEvent()">추가</button></div></div>`;
     setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
 }
@@ -178,8 +170,8 @@ function toggleEventInput() {
 function editEvent(id) {
     const ev = appState.global.event.find(e => e.id === id); if (!ev) return;
     const wrap = document.getElementById(`add-wrap-event`); wrap.classList.remove('hidden');
-    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-${id}">`; appState.characters.forEach(c => { let isSelected = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(c.id); chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${c.name}</div>`; }); chipsHtml += `</div>`;
-    wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}<div class="form-row"><input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100" value="${ev.period || ''}"><input type="text" id="input-ev-title" placeholder="이벤트 제목" value="${ev.title || ''}"></div><div class="form-row day-selector" id="event-day-selector">${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn ${ev.days && ev.days.includes(d) ? 'selected' : ''}" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}</div><div class="form-row"><input type="text" id="input-ev-memo1" placeholder="메모 1" value="${ev.memo1 || ''}"><input type="text" id="input-ev-memo2" placeholder="메모 2" value="${ev.memo2 || ''}"></div><div class="form-actions"><button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button><button type="button" class="btn-submit edit" id="btn-submit-event" onclick="submitEvent()">수정</button></div></div>`;
+    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-${id}">`; appState.characters.forEach(c => { let isSelected = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(c.id); chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${escapeHTML(c.name)}</div>`; }); chipsHtml += `</div>`;
+    wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}<div class="form-row"><input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100" value="${escapeHTML(ev.period || '')}"><input type="text" id="input-ev-title" placeholder="이벤트 제목" value="${escapeHTML(ev.title || '')}"></div><div class="form-row day-selector" id="event-day-selector">${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn ${ev.days && ev.days.includes(d) ? 'selected' : ''}" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}</div><div class="form-row"><input type="text" id="input-ev-memo1" placeholder="메모 1" value="${escapeHTML(ev.memo1 || '')}"><input type="text" id="input-ev-memo2" placeholder="메모 2" value="${escapeHTML(ev.memo2 || '')}"></div><div class="form-actions"><button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button><button type="button" class="btn-submit edit" id="btn-submit-event" onclick="submitEvent()">수정</button></div></div>`;
     selectedEventDays = [...(ev.days || [])]; editingEventId = id; setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
 }
 
@@ -224,7 +216,11 @@ function addNotice() {
 }
 
 function deleteNotice(id) { 
-    if(!confirm("이 공지사항을 내역에서 삭제하시겠습니까?")) return; 
+    // 🌟 공지사항 제목 표시
+    const notice = appState.global.notices.find(n => n.id === id);
+    const titleStr = notice ? `[${notice.title}] ` : '';
+    if(!confirm(`${titleStr}공지사항을 삭제하시겠습니까?`)) return; 
+    
     updateAppState(() => { appState.global.notices = appState.global.notices.filter(n => n.id !== id); }, [renderGlobal]); 
 }
 
@@ -271,12 +267,54 @@ function deleteCharacter() {
 }
 
 function deleteGlobal(type, id) { 
-    if (!confirm("삭제하시겠습니까?")) return; 
+    // 🌟 이벤트 기간 및 공통 메모 내용 표시
+    let itemName = '';
+    if (type === 'event') {
+        const ev = appState.global.event.find(e => e.id === id);
+        // 기간(period)이 있으면 함께 출력
+        itemName = ev ? `이벤트 [${ev.period}] ${ev.title} ` : '이 항목';
+    } else if (type === 'memo') {
+        const memo = appState.global.memo.find(m => m.id === id);
+        itemName = memo ? `메모 [${memo.label}]` : '이 항목';
+    }
+    
+    if (!confirm(`${itemName}을(를) 삭제하시겠습니까?`)) return; 
+    
     updateAppState(() => { appState.global[type] = appState.global[type].filter(i => i.id !== id); }, [renderTabs, renderGlobal, renderCharacterTasks]); 
 }
 
-function openDeleteModal(category, taskId, isGlobal) { deleteTarget = { category, taskId, isGlobal }; document.getElementById('delete-modal').classList.add('show'); }
+function openDeleteModal(category, taskId, isGlobal) { 
+    deleteTarget = { category, taskId, isGlobal }; 
+    
+    // 🌟 개별 숙제 이름 및 마을 추출
+    let taskName = '';
+    let targetTask = null;
+
+    if (isGlobal) {
+        targetTask = appState.global.tasksTemplate[category].find(t => t.id === taskId);
+    } else {
+        const activeChar = appState.characters.find(c => c.id === appState.activeTabId);
+        if (activeChar && activeChar.customTasks[category]) {
+            targetTask = activeChar.customTasks[category].find(t => t.id === taskId);
+        }
+    }
+
+    if (targetTask) {
+        let baseName = targetTask.type === 'trade' ? `${targetTask.fromItem} → ${targetTask.toItem}` : targetTask.label;
+        // 마을(town) 정보가 있으면 대괄호로 앞에 추가
+        taskName = targetTask.town ? `[${targetTask.town}] ${baseName}` : baseName;
+    }
+
+    const modalTitle = document.querySelector('#delete-modal h3');
+    if (modalTitle) {
+        modalTitle.innerText = taskName ? `삭제: ${taskName}` : '항목 삭제';
+    }
+    
+    document.getElementById('delete-modal').classList.add('show'); 
+}
+
 function closeDeleteModal() { deleteTarget = null; document.getElementById('delete-modal').classList.remove('show'); }
+
 function executeDelete(type) {
     if (!deleteTarget) return; const { category, taskId, isGlobal } = deleteTarget; 
     updateAppState(() => {
@@ -292,7 +330,7 @@ function executeDelete(type) {
 }
 
 // ==========================================
-// 7. 이벤트 바인딩 (HTML에서 제거된 인라인 속성 연결)
+// 7. 이벤트 바인딩
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-notice-add-toggle')?.addEventListener('click', () => toggleInput('notice'));
