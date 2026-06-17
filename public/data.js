@@ -19,7 +19,7 @@ const db = firebase.firestore();
 db.enablePersistence().catch(err => { console.warn("오프라인 모드 활성화 실패:", err); });
 
 let docRef = null; 
-let isServerSynced = false; // 🌟 핵심 자물쇠: 서버 최신화 완료 여부
+let isServerSynced = false; // 🌟 자동 초기화용 전역 자물쇠
 
 // ==========================================
 // 2. 전역 상태 변수 및 기본 데이터 포맷
@@ -104,20 +104,26 @@ function linkGoogleAccount() {
 }
 
 // ==========================================
-// 4. 데이터 로드 및 저장 통제 (캐시 락 적용)
+// 4. 데이터 로드 및 저장 통제 (사용자 조작 락 해제)
 // ==========================================
 function loadData() {
+    // 🌟 파이어베이스가 응답이 없더라도 3초 뒤엔 무조건 자물쇠를 푸는 예비 열쇠
+    setTimeout(() => { 
+        if (!isServerSynced) {
+            isServerSynced = true; 
+            checkAndApplyAutoResets(); 
+        }
+    }, 3000);
+
     docRef.onSnapshot((doc) => {
         const isFromCache = doc.metadata.fromCache;
         
-        // 🌟 1. 진짜 서버 최신 데이터가 도착하면 자물쇠 해제!
         if (!isFromCache) {
             isServerSynced = true; 
         }
 
         const newData = doc.exists ? doc.data() : JSON.parse(JSON.stringify(DEFAULT_STATE));
         
-        // 🌟 2. 서버랑 완벽하게 동기화된 상태인데, 변경점이 없으면 무시 (불필요한 화면 깜빡임 방지)
         if (isServerSynced && appState && JSON.stringify(appState) === JSON.stringify(newData)) {
             return;
         }
@@ -125,7 +131,7 @@ function loadData() {
         appState = newData;
         cleanupEmptyTowns(); 
         
-        // 🌟 3. 자동 초기화는 자물쇠가 풀렸을 때(서버 데이터일 때)만 안전하게 실행됨
+        // 🌟 자동 초기화(날짜 변경 체크)는 여전히 서버 데이터가 확실할 때만 실행!
         checkAndApplyAutoResets(); 
 
         if (countdownInterval) clearInterval(countdownInterval);
@@ -133,7 +139,6 @@ function loadData() {
         
         renderAll();
 
-        // 첫 로딩 스피너 제거
         document.getElementById('loading-spinner')?.classList.add('fade-out');
         document.querySelector('.container')?.classList.add('loaded');
     }, (error) => {
@@ -143,19 +148,14 @@ function loadData() {
 }
 
 function saveData() { 
-    // 🌟 자물쇠가 잠겨있으면 절대 서버에 쓰기(Write)를 하지 않음! (과거 데이터 덮어쓰기 방지)
-    if (!appState || !docRef || !isServerSynced) return; 
+    // 🌟 수동 저장 제한 해제! 사용자가 버튼 누르면 자물쇠 상관없이 즉각 저장
+    if (!appState || !docRef) return; 
     cleanupEmptyTowns(); 
     docRef.set(appState).catch(err => console.error("Firebase 저장 에러: ", err)); 
 }
 
 function updateAppState(updaterFn, renderFns = [renderAll]) {
-    // 🌟 사용자가 손으로 체크/추가/삭제하는 동작도 서버 최신화 전에는 차단
-    if (!isServerSynced) {
-        showToast("🔄 구글 서버와 최신화 중입니다. 1~2초 후 다시 시도해주세요.");
-        return;
-    }
-
+    // 🌟 수동 갱신 제한 해제! 토스트 메시지 띄우지 않고 바로 명령 수행
     if (updaterFn) updaterFn(); 
     saveData(); 
     if (renderFns && renderFns.length > 0) { renderFns.forEach(fn => fn()); } 
@@ -175,7 +175,7 @@ function cleanupEmptyTowns() {
 // 5. 초기화 및 유틸리티 함수
 // ==========================================
 function checkAndApplyAutoResets() {
-    // 🌟 자물쇠가 잠겨있으면 초기화 로직 자체를 스킵 (과거 데이터가 초기화의 기준이 되는 것 방지)
+    // 🌟 자동 초기화는 여전히 자물쇠(isServerSynced)가 풀려야만 작동 (데이터 롤백 대참사 방어)
     if (!appState || !appState.global || !isServerSynced) return;
 
     const now = new Date(); let lastDaily = new Date(now);
