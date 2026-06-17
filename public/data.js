@@ -237,7 +237,18 @@ function getEventStatusClass(periodStr) {
             else if (sRaw.hasYear && !eRaw.hasYear) { eRaw.y = (sRaw.m > eRaw.m) ? sRaw.y + 1 : sRaw.y; }
         } else { if (sRaw && !sRaw.hasYear) sRaw.y = inferYear(sRaw.m, sRaw.d); if (eRaw && !eRaw.hasYear) eRaw.y = inferYear(eRaw.m, eRaw.d); }
         let startDate = sRaw ? new Date(sRaw.y, sRaw.m - 1, sRaw.d, 0, 0, 0) : null; let endDate = eRaw ? new Date(eRaw.y, eRaw.m - 1, eRaw.d, 23, 59, 59) : null;
-        if (endDate && now > endDate) return 'ev-status-ended'; if (startDate && now < startDate) return 'ev-status-upcoming'; return 'ev-status-ongoing';
+        
+        if (endDate && now > endDate) return 'ev-status-ended'; 
+        if (startDate && now < startDate) return 'ev-status-upcoming'; 
+        
+        if (endDate && 
+            now.getFullYear() === endDate.getFullYear() && 
+            now.getMonth() === endDate.getMonth() && 
+            now.getDate() === endDate.getDate()) {
+            return 'ev-status-closing'; // 마감 당일 전용 클래스 반환
+        }
+
+        return 'ev-status-ongoing';
     } catch(e) { return 'ev-status-ongoing'; }
 }
 
