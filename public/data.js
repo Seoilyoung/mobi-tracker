@@ -19,6 +19,7 @@ const db = firebase.firestore();
 db.enablePersistence().catch(err => { console.warn("오프라인 모드 활성화 실패:", err); });
 
 let docRef = null; 
+let isServerSynced = false; // 🌟 핵심 자물쇠: 서버 최신화 완료 여부
 
 // ==========================================
 // 2. 전역 상태 변수 및 기본 데이터 포맷
@@ -76,7 +77,6 @@ firebase.auth().onAuthStateChanged((user) => {
             authBtn.title = isLinked ? '구글 계정과 안전하게 연동됨' : '구글 계정 연동 (데이터 백업)';
         }
         
-        // 인증이 완벽하게 끝난 직후에만 데이터 로딩 시작
         loadData();
     } else {
         firebase.auth().signInAnonymously().catch(error => {
@@ -104,30 +104,36 @@ function linkGoogleAccount() {
 }
 
 // ==========================================
-// 4. 데이터 로드 및 저장 통제 (완벽 동기화)
+// 4. 데이터 로드 및 저장 통제 (캐시 락 적용)
 // ==========================================
 function loadData() {
     docRef.onSnapshot((doc) => {
-        // 🌟 내 기기에서 수정한 직후 발생하는 불필요한 메아리(로컬 이벤트) 무시
-        // 폰 등 외부 기기에서 온 진짜 DB 변경 데이터만 통과시킴
-        if (doc.metadata.hasPendingWrites) return; 
+        const isFromCache = doc.metadata.fromCache;
+        
+        // 🌟 1. 진짜 서버 최신 데이터가 도착하면 자물쇠 해제!
+        if (!isFromCache) {
+            isServerSynced = true; 
+        }
 
-        appState = doc.exists ? doc.data() : JSON.parse(JSON.stringify(DEFAULT_STATE));
+        const newData = doc.exists ? doc.data() : JSON.parse(JSON.stringify(DEFAULT_STATE));
+        
+        // 🌟 2. 서버랑 완벽하게 동기화된 상태인데, 변경점이 없으면 무시 (불필요한 화면 깜빡임 방지)
+        if (isServerSynced && appState && JSON.stringify(appState) === JSON.stringify(newData)) {
+            return;
+        }
+
+        appState = newData;
         cleanupEmptyTowns(); 
         
-        // 데이터 로드 직후 초기화 필요 여부 체크 (화면 그리기는 여기서 안 함)
-        const hasReset = checkAndApplyAutoResets(); 
+        // 🌟 3. 자동 초기화는 자물쇠가 풀렸을 때(서버 데이터일 때)만 안전하게 실행됨
+        checkAndApplyAutoResets(); 
 
         if (countdownInterval) clearInterval(countdownInterval);
         countdownInterval = setInterval(updateAbyssCountdown, 1000);
         
-        // 모든 뼈대와 데이터 세팅이 끝난 후 단 한 번만 화면 전체 렌더링
         renderAll();
 
-        // 만약 방금 로드하면서 초기화가 진행되었다면 그 결과를 DB에도 덮어쓰기
-        if (hasReset) docRef.set(appState).catch(e => console.error(e));
-
-        // 무사히 완료되면 스피너 숨기기
+        // 첫 로딩 스피너 제거
         document.getElementById('loading-spinner')?.classList.add('fade-out');
         document.querySelector('.container')?.classList.add('loaded');
     }, (error) => {
@@ -137,12 +143,19 @@ function loadData() {
 }
 
 function saveData() { 
-    if (!appState || !docRef) return; 
+    // 🌟 자물쇠가 잠겨있으면 절대 서버에 쓰기(Write)를 하지 않음! (과거 데이터 덮어쓰기 방지)
+    if (!appState || !docRef || !isServerSynced) return; 
     cleanupEmptyTowns(); 
     docRef.set(appState).catch(err => console.error("Firebase 저장 에러: ", err)); 
 }
 
 function updateAppState(updaterFn, renderFns = [renderAll]) {
+    // 🌟 사용자가 손으로 체크/추가/삭제하는 동작도 서버 최신화 전에는 차단
+    if (!isServerSynced) {
+        showToast("🔄 구글 서버와 최신화 중입니다. 1~2초 후 다시 시도해주세요.");
+        return;
+    }
+
     if (updaterFn) updaterFn(); 
     saveData(); 
     if (renderFns && renderFns.length > 0) { renderFns.forEach(fn => fn()); } 
@@ -162,7 +175,9 @@ function cleanupEmptyTowns() {
 // 5. 초기화 및 유틸리티 함수
 // ==========================================
 function checkAndApplyAutoResets() {
-    if (!appState || !appState.global) return false;
+    // 🌟 자물쇠가 잠겨있으면 초기화 로직 자체를 스킵 (과거 데이터가 초기화의 기준이 되는 것 방지)
+    if (!appState || !appState.global || !isServerSynced) return;
+
     const now = new Date(); let lastDaily = new Date(now);
     if (now.getHours() < 6) lastDaily.setDate(lastDaily.getDate() - 1);
     lastDaily.setHours(6, 0, 0, 0);
@@ -172,7 +187,6 @@ function checkAndApplyAutoResets() {
     
     let needsSave = false;
     
-    // 일일 초기화
     if (!appState.global.lastDailyReset || appState.global.lastDailyReset < lastDaily.getTime()) {
         appState.global.lastDailyReset = lastDaily.getTime(); needsSave = true;
         for (let tid in appState.global.sharedChecks) {
@@ -185,7 +199,6 @@ function checkAndApplyAutoResets() {
         });
     }
     
-    // 주간 초기화
     if (!appState.global.lastWeeklyReset || appState.global.lastWeeklyReset < lastWeekly.getTime()) {
         appState.global.lastWeeklyReset = lastWeekly.getTime(); needsSave = true;
         for (let tid in appState.global.sharedChecks) {
@@ -195,21 +208,14 @@ function checkAndApplyAutoResets() {
         appState.characters.forEach(char => { ['weekly', 'weekly-trade'].forEach(cat => { appState.global.tasksTemplate[cat].forEach(t => delete char.checks[t.id]); if (char.customTasks[cat]) char.customTasks[cat].forEach(t => delete char.checks[t.id]); }); });
     }
     
-    // 이 함수는 '초기화가 발생했는지(true/false)'만 보고하고 화면 그리기는 다른 곳에 맡김
-    return needsSave;
+    if (needsSave) {
+        saveData();
+        renderTabs();
+        renderCharacterTasks();
+    }
 }
 
-// 1분마다 자동 초기화 시간 체크
-setInterval(() => { 
-    if (appState) { 
-        const hasReset = checkAndApplyAutoResets(); 
-        if (hasReset) {
-            saveData();
-            renderTabs();
-            renderCharacterTasks();
-        }
-    } 
-}, 60000);
+setInterval(() => { if (appState) checkAndApplyAutoResets(); }, 60000);
 
 function formatDateKor(isoStr, includeYear=true) {
     if (!isoStr) return ""; const d = new Date(isoStr); const y = d.getFullYear(); const m = d.getMonth() + 1; const day = d.getDate(); const week = ['일','월','화','수','목','금','토'][d.getDay()]; let h = d.getHours(); const min = String(d.getMinutes()).padStart(2, '0'); const ampm = h >= 12 ? '오후' : '오전'; h = h % 12; if (h === 0) h = 12;
@@ -241,12 +247,7 @@ function getEventStatusClass(periodStr) {
         if (endDate && now > endDate) return 'ev-status-ended'; 
         if (startDate && now < startDate) return 'ev-status-upcoming'; 
         
-        if (endDate && 
-            now.getFullYear() === endDate.getFullYear() && 
-            now.getMonth() === endDate.getMonth() && 
-            now.getDate() === endDate.getDate()) {
-            return 'ev-status-closing'; // 마감 당일 전용 클래스 반환
-        }
+        if (endDate && now.getFullYear() === endDate.getFullYear() && now.getMonth() === endDate.getMonth() && now.getDate() === endDate.getDate()) { return 'ev-status-closing'; }
 
         return 'ev-status-ongoing';
     } catch(e) { return 'ev-status-ongoing'; }
@@ -260,7 +261,7 @@ function getCharCompletionStatus(char) {
         if (cat.id === 'daily') {
             appState.global.event.forEach(ev => {
                 const status = getEventStatusClass(ev.period); const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(char.id);
-                if (status === 'ev-status-ongoing' && ev.days && ev.days.includes(todayDay) && isForThisChar) { dailyTotal++; if (!!char.checks[`evtask-${ev.id}`]) dailyChecked++; }
+                if ((status === 'ev-status-ongoing' || status === 'ev-status-closing') && ev.days && ev.days.includes(todayDay) && isForThisChar) { dailyTotal++; if (!!char.checks[`evtask-${ev.id}`]) dailyChecked++; }
             });
         }
         appState.global.tasksTemplate[cat.id].forEach(t => {
