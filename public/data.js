@@ -104,14 +104,25 @@ function linkGoogleAccount() {
 }
 
 // ==========================================
-// 4. 데이터 로드 및 저장 통제 (사용자 조작 락 해제)
+// 4. 데이터 로드 및 저장 통제 (사용자 조작 락 해제 및 무한 로딩 수정)
 // ==========================================
 function loadData() {
-    // 🌟 파이어베이스가 응답이 없더라도 3초 뒤엔 무조건 자물쇠를 푸는 예비 열쇠
+    // 🌟 파이어베이스가 응답이 없더라도 3초 뒤엔 무조건 자물쇠를 풀고 강제 렌더링!
     setTimeout(() => { 
         if (!isServerSynced) {
             isServerSynced = true; 
+            
+            // 만약 아직 데이터를 못 받아서 빈손이라면, 기본 뼈대를 채워 넣고 화면을 그립니다.
+            if (!appState) {
+                appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+                renderAll();
+            }
+            
             checkAndApplyAutoResets(); 
+            
+            // 영원히 돌고 있던 로딩 동그라미를 강제로 치워버립니다.
+            document.getElementById('loading-spinner')?.classList.add('fade-out');
+            document.querySelector('.container')?.classList.add('loaded');
         }
     }, 3000);
 
@@ -131,7 +142,6 @@ function loadData() {
         appState = newData;
         cleanupEmptyTowns(); 
         
-        // 🌟 자동 초기화(날짜 변경 체크)는 여전히 서버 데이터가 확실할 때만 실행!
         checkAndApplyAutoResets(); 
 
         if (countdownInterval) clearInterval(countdownInterval);
@@ -139,6 +149,7 @@ function loadData() {
         
         renderAll();
 
+        // 정상적으로 서버에서 데이터를 받았을 때도 스피너 제거
         document.getElementById('loading-spinner')?.classList.add('fade-out');
         document.querySelector('.container')?.classList.add('loaded');
     }, (error) => {
