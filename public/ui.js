@@ -186,7 +186,10 @@ function renderCharacterTasks() {
         if (cat.id === 'daily') {
             appState.global.event.forEach(ev => {
                 const status = getEventStatusClass(ev.period); const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(activeChar.id);
-                if (status === 'ev-status-ongoing' && ev.days && ev.days.includes(todayDay) && isForThisChar) { blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${escapeHTML(ev.title)}`, type: 'normal', isEventInject: true } }); }
+                // 🌟 핵심 수정: '진행 중'이거나 '마감 임박'인 경우 모두 일일 숙제 목록에 추가
+                if ((status === 'ev-status-ongoing' || status === 'ev-status-closing') && ev.days && ev.days.includes(todayDay) && isForThisChar) { 
+                    blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${escapeHTML(ev.title)}`, type: 'normal', isEventInject: true } }); 
+                }
             });
         }
         
