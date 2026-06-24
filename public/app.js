@@ -25,10 +25,31 @@ function toggleCompleted(categoryId) {
 }
 
 document.addEventListener('click', function(event) { 
-    if (event.target.closest('.add-wrap') || event.target.closest('.toggle-btn') || event.target.closest('.icon-btn') || event.target.closest('.modal-box') || event.target.classList.contains('char-chip') || event.target.closest('.inline-form-box')) return; 
-    document.querySelectorAll('.grid .add-wrap:not(.hidden)').forEach(el => el.classList.add('hidden')); 
-    resetEventForm(); 
-    if (currentlyEditingTask) cancelEdit(currentlyEditingTask.categoryId, currentlyEditingTask.taskId); 
+    // 폼 내부나 제어 버튼(토글 버튼, 아이콘 버튼, 칩 등)을 누른 경우는 닫히지 않도록 무시
+    if (event.target.closest('.add-wrap') || 
+        event.target.closest('.toggle-btn') || 
+        event.target.closest('.icon-btn') || 
+        event.target.closest('.modal-box') || 
+        event.target.classList.contains('char-chip') || 
+        event.target.closest('.inline-form-box')) return; 
+
+    // 1. 열려 있는 모든 추가창(.add-wrap) 숨기기 (공지, 어비스, 메모, 숙제 전체 적용)
+    document.querySelectorAll('.add-wrap:not(.hidden)').forEach(el => el.classList.add('hidden')); 
+    
+    // 2. 글로벌 인라인 편집 모드(공지, 메모, 이벤트) 전체 취소 및 초기화
+    let needGlobalRender = false;
+
+    if (editingNoticeId !== null) { editingNoticeId = null; needGlobalRender = true; }
+    if (editingMemoId !== null) { editingMemoId = null; needGlobalRender = true; }
+    if (editingEventId !== null) { editingEventId = null; resetEventForm(); needGlobalRender = true; }
+
+    // 편집이 취소되었으므로 화면을 일반 모드로 다시 그리기
+    if (needGlobalRender) { renderGlobal(); }
+
+    // 3. 기존 일반 숙제 편집창 취소 로직
+    if (currentlyEditingTask) {
+        cancelEdit(currentlyEditingTask.categoryId, currentlyEditingTask.taskId); 
+    }
 });
 
 // ==========================================
