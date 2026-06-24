@@ -96,23 +96,98 @@ function renderGlobal() {
         noticeHtml = `<li class="task-item" style="color:var(--text-muted); justify-content:center; font-size:0.9rem; border:none;">등록된 공지사항이 없습니다.</li>`; 
     } else {
         appState.global.notices.forEach(n => {
-            const safeTitle = escapeHTML(n.title);
-            const safeUrl = escapeHTML(n.url);
-            let titleHTML = n.url ? `<a href="${safeUrl}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">• ${safeTitle} 🔗</a>` : `<span>• ${safeTitle}</span>`;
-            noticeHtml += `<li class="task-item" style="padding: 6px 0;"><div class="task-content" style="font-size:0.95rem;">${titleHTML}</div><button class="icon-btn delete-btn" onclick="deleteNotice('${n.id}')">✕</button></li>`;
+            if (editingNoticeId === n.id) {
+                // [수정 모드] 회색 인라인 폼
+                noticeHtml += `<li class="task-item edit-mode" style="padding: 0; border: none; background: transparent;">
+                    <div class="inline-form-box" style="margin: 0; box-shadow: none;">
+                        <div class="form-row">
+                            <input type="text" id="inline-notice-title-${n.id}" placeholder="공지 제목" value="${escapeHTML(n.title)}" style="flex: 1;">
+                            <input type="text" id="inline-notice-url-${n.id}" placeholder="링크 URL (선택)" value="${escapeHTML(n.url || '')}" style="flex: 1;">
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-cancel" onclick="cancelEditNotice()">취소</button>
+                            <button type="button" class="btn-submit edit" onclick="saveInlineNotice('${n.id}')">수정</button>
+                        </div>
+                    </div>
+                </li>`;
+            } else {
+                // [일반 모드] (수정 ✏️ 버튼 추가)
+                const safeTitle = escapeHTML(n.title);
+                const safeUrl = escapeHTML(n.url);
+                let titleHTML = n.url ? `<a href="${safeUrl}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">• ${safeTitle} 🔗</a>` : `<span>• ${safeTitle}</span>`;
+                
+                noticeHtml += `<li class="task-item" style="padding: 6px 0;">
+                    <div class="task-content" style="font-size:0.95rem;">${titleHTML}</div>
+                    <div class="action-btns">
+                        <button class="icon-btn edit-btn" onclick="editNotice('${n.id}')" title="수정">✏️</button>
+                        <button class="icon-btn delete-btn" onclick="deleteNotice('${n.id}')">✕</button>
+                    </div>
+                </li>`;
+            }
         });
     }
     document.getElementById('list-notice').innerHTML = noticeHtml;
     
     let eventHtml = '';
     appState.global.event.forEach(ev => {
-        const statusClass = getEventStatusClass(ev.period); const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
-        eventHtml += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${escapeHTML(ev.period)}</span><span class="col-title">${escapeHTML(ev.title)}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${escapeHTML(ev.memo1)}</span><span class="col-memo2">${escapeHTML(ev.memo2)}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
+        if (editingEventId === ev.id) {
+            let chipsHtml = `<div class="target-chars-wrap" id="inline-chips-event-${ev.id}">`;
+            appState.characters.forEach(c => {
+                let isSelected = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(c.id);
+                chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${escapeHTML(c.name)}</div>`;
+            });
+            chipsHtml += `</div>`;
+            let daysHtml = ['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn ${ev.days && ev.days.includes(d) ? 'selected' : ''}" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('');
+
+            eventHtml += `<li class="event-item edit-mode" style="padding: 0; border: none;">
+                <div class="inline-form-box" style="margin: 0; box-shadow: none;">
+                    ${chipsHtml}
+                    <div class="form-row">
+                        <input type="text" id="inline-ev-period-${ev.id}" placeholder="기간" class="w-100" value="${escapeHTML(ev.period || '')}">
+                        <input type="text" id="inline-ev-title-${ev.id}" placeholder="이벤트 제목" value="${escapeHTML(ev.title || '')}">
+                    </div>
+                    <div class="form-row day-selector">${daysHtml}</div>
+                    <div class="form-row">
+                        <input type="text" id="inline-ev-memo1-${ev.id}" placeholder="메모 1" value="${escapeHTML(ev.memo1 || '')}">
+                        <input type="text" id="inline-ev-memo2-${ev.id}" placeholder="메모 2" value="${escapeHTML(ev.memo2 || '')}">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="cancelEditEvent()">취소</button>
+                        <button type="button" class="btn-submit edit" onclick="saveInlineEvent('${ev.id}')">수정</button>
+                    </div>
+                </div>
+            </li>`;
+        } else {
+            const statusClass = getEventStatusClass(ev.period); const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
+            eventHtml += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${escapeHTML(ev.period)}</span><span class="col-title">${escapeHTML(ev.title)}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${escapeHTML(ev.memo1)}</span><span class="col-memo2">${escapeHTML(ev.memo2)}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
+        }
     });
     document.getElementById('list-event').innerHTML = eventHtml;
     
     let memoHtml = '';
-    appState.global.memo.forEach(memo => { memoHtml += `<li class="task-item"><div class="task-content"><span>• ${escapeHTML(memo.label)}</span></div><button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button></li>`; });
+    appState.global.memo.forEach(memo => { 
+        if (editingMemoId === memo.id) {
+            memoHtml += `<li class="task-item edit-mode" style="padding: 0; border: none; background: transparent;">
+                <div class="inline-form-box" style="margin: 0; box-shadow: none;">
+                    <div class="form-row">
+                        <input type="text" id="inline-memo-${memo.id}" value="${escapeHTML(memo.label)}" style="flex: 1;" onkeypress="if(event.key==='Enter') saveInlineMemo('${memo.id}')">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="cancelEditMemo()">취소</button>
+                        <button type="button" class="btn-submit edit" onclick="saveInlineMemo('${memo.id}')">수정</button>
+                    </div>
+                </div>
+            </li>`;
+        } else {
+            memoHtml += `<li class="task-item">
+                <div class="task-content"><span>• ${escapeHTML(memo.label)}</span></div>
+                <div class="action-btns">
+                    <button class="icon-btn edit-btn" onclick="editMemo('${memo.id}')" title="수정">✏️</button>
+                    <button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button>
+                </div>
+            </li>`; 
+        }
+    });
     document.getElementById('list-memo').innerHTML = memoHtml;
 }
 

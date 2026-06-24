@@ -56,13 +56,13 @@
             </div>
 
             <div class="add-wrap hidden" id="add-wrap-abyss">
-                <div class="inline-form-box mt-10">
+                <div class="inline-form-box">
                     <div class="form-row">
                         <input type="datetime-local" id="input-abyss" class="w-100">
                     </div>
                     <div class="form-actions">
-                        <button id="btn-abyss-cancel" class="btn-cancel">취소</button>
-                        <button id="btn-abyss-save" class="btn-submit">적용</button>
+                        <button type="button" class="btn-cancel" id="btn-abyss-cancel">취소</button>
+                        <button type="button" class="btn-submit" id="btn-abyss-save">적용</button>
                     </div>
                 </div>
             </div>
@@ -75,10 +75,15 @@
             </div>
             <ul class="task-list notice-list-custom" id="list-notice"></ul>
             <div class="add-wrap hidden" id="add-wrap-notice">
-                <div class="form-row">
-                    <input type="text" id="input-notice-title" class="flex-2" placeholder="공지 제목 입력...">
-                    <input type="text" id="input-notice-url" class="flex-2" placeholder="링크 주소 URL (선택)...">
-                    <button id="btn-notice-save" class="btn-submit">등록</button>
+                <div class="inline-form-box">
+                    <div class="form-row">
+                        <input type="text" id="input-notice-title" placeholder="공지 제목" style="flex: 1;">
+                        <input type="text" id="input-notice-url" placeholder="링크 URL (선택)" style="flex: 1;">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('add-wrap-notice').classList.add('hidden')">취소</button>
+                        <button type="button" class="btn-submit" id="btn-notice-save">추가</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -101,9 +106,14 @@
             </div>
             <ul class="task-list" id="list-memo"></ul>
             <div class="add-wrap hidden" id="add-wrap-memo">
-                <div class="form-row">
-                    <input type="text" id="input-memo" placeholder="새 메모 추가...">
-                    <button id="btn-memo-save" class="btn-submit">추가</button>
+                <div class="inline-form-box">
+                    <div class="form-row">
+                        <input type="text" id="input-memo" placeholder="새로운 공통 메모 내용 입력..." class="w-100">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick="document.getElementById('add-wrap-memo').classList.add('hidden')">취소</button>
+                        <button type="button" class="btn-submit" id="btn-memo-save">추가</button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -168,11 +168,40 @@ function toggleEventInput() {
 }
 
 function editEvent(id) {
-    const ev = appState.global.event.find(e => e.id === id); if (!ev) return;
-    const wrap = document.getElementById(`add-wrap-event`); wrap.classList.remove('hidden');
-    let chipsHtml = `<div class="target-chars-wrap" id="chips-event-${id}">`; appState.characters.forEach(c => { let isSelected = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(c.id); chipsHtml += `<div class="char-chip ${isSelected ? 'selected' : ''}" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${escapeHTML(c.name)}</div>`; }); chipsHtml += `</div>`;
-    wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}<div class="form-row"><input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100" value="${escapeHTML(ev.period || '')}"><input type="text" id="input-ev-title" placeholder="이벤트 제목" value="${escapeHTML(ev.title || '')}"></div><div class="form-row day-selector" id="event-day-selector">${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn ${ev.days && ev.days.includes(d) ? 'selected' : ''}" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}</div><div class="form-row"><input type="text" id="input-ev-memo1" placeholder="메모 1" value="${escapeHTML(ev.memo1 || '')}"><input type="text" id="input-ev-memo2" placeholder="메모 2" value="${escapeHTML(ev.memo2 || '')}"></div><div class="form-actions"><button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button><button type="button" class="btn-submit edit" id="btn-submit-event" onclick="submitEvent()">수정</button></div></div>`;
-    selectedEventDays = [...(ev.days || [])]; editingEventId = id; setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
+    const ev = appState.global.event.find(e => e.id === id); 
+    if (!ev) return;
+    
+    editingEventId = id;
+    selectedEventDays = [...(ev.days || [])]; // 선택된 요일 데이터 복사
+    renderGlobal();
+}
+
+function cancelEditEvent() {
+    editingEventId = null;
+    selectedEventDays = [];
+    renderGlobal();
+}
+
+function saveInlineEvent(id) {
+    const period = document.getElementById(`inline-ev-period-${id}`).value.trim();
+    const title = document.getElementById(`inline-ev-title-${id}`).value.trim();
+    const memo1 = document.getElementById(`inline-ev-memo1-${id}`).value.trim();
+    const memo2 = document.getElementById(`inline-ev-memo2-${id}`).value.trim();
+    if (!title) { showToast('이벤트 제목은 필수입니다.'); return; }
+    
+    const chipWrap = document.getElementById(`inline-chips-event-${id}`);
+    const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId);
+    if (selectedCharIds.length === 0) { showToast('최소 하나 이상의 캐릭터를 선택하세요.'); return; }
+
+    updateAppState(() => {
+        const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
+        const evIndex = appState.global.event.findIndex(e => e.id === id);
+        if (evIndex > -1) {
+            appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, days: [...selectedEventDays], memo1, memo2, targetChars };
+        }
+        editingEventId = null;
+        selectedEventDays = [];
+    }, [renderTabs, renderGlobal, renderCharacterTasks]);
 }
 
 function submitEvent() {
@@ -215,6 +244,37 @@ function addNotice() {
     }, [renderGlobal]);
 }
 
+let editingNoticeId = null; 
+
+function editNotice(id) {
+    editingNoticeId = id;
+    renderGlobal(); 
+}
+
+function cancelEditNotice() {
+    editingNoticeId = null;
+    renderGlobal();
+}
+
+function saveInlineNotice(id) {
+    const title = document.getElementById(`inline-notice-title-${id}`).value.trim();
+    let url = document.getElementById(`inline-notice-url-${id}`).value.trim();
+    
+    if (!title) { showToast('공지 제목을 입력하세요.'); return; }
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) { 
+        url = 'https://' + url; 
+    }
+    
+    updateAppState(() => {
+        const target = appState.global.notices.find(n => n.id === id);
+        if (target) {
+            target.title = title;
+            target.url = url;
+        }
+        editingNoticeId = null;
+    }, [renderGlobal]);
+}
+
 function deleteNotice(id) { 
     // 🌟 공지사항 제목 표시
     const notice = appState.global.notices.find(n => n.id === id);
@@ -224,12 +284,51 @@ function deleteNotice(id) {
     updateAppState(() => { appState.global.notices = appState.global.notices.filter(n => n.id !== id); }, [renderGlobal]); 
 }
 
+let editingMemoId = null; // 🌟 메모 수정 모드 추적용 변수
+
 function addMemo() { 
-    const val = document.getElementById('input-memo').value.trim(); if (!val) return; 
+    const val = document.getElementById('input-memo').value.trim(); 
+    if (!val) return; 
+
     updateAppState(() => {
-        appState.global.memo.push({ id: genId(), label: val }); 
-        document.getElementById('input-memo').value = ''; document.getElementById('add-wrap-memo').classList.add('hidden'); 
+        if (editingMemoId) {
+            // 🌟 [수정 모드] 기존 메모 덮어쓰기
+            const target = appState.global.memo.find(m => m.id === editingMemoId);
+            if (target) target.label = val;
+            
+            editingMemoId = null; // 상태 초기화
+            const btn = document.getElementById('btn-memo-save');
+            if (btn) { btn.innerText = '저장'; btn.style.backgroundColor = ''; btn.style.color = ''; }
+        } else {
+            // 🌟 [신규 추가 모드]
+            appState.global.memo.push({ id: genId(), label: val }); 
+        }
+        
+        document.getElementById('input-memo').value = ''; 
+        document.getElementById('add-wrap-memo').classList.add('hidden'); 
     }, [renderGlobal]); 
+}
+
+// 🌟 메모 수정 모드 진입 함수 새로 추가
+function editMemo(id) {
+    editingMemoId = id;
+    renderGlobal(); // 수정 버튼을 누르면 화면을 다시 그려서 인라인 폼을 띄움
+}
+
+function cancelEditMemo() {
+    editingMemoId = null;
+    renderGlobal();
+}
+
+function saveInlineMemo(id) {
+    const val = document.getElementById(`inline-memo-${id}`).value.trim();
+    if (!val) { showToast('메모 내용을 입력해주세요.'); return; }
+    
+    updateAppState(() => {
+        const target = appState.global.memo.find(m => m.id === id);
+        if (target) target.label = val;
+        editingMemoId = null;
+    }, [renderGlobal]);
 }
 
 // ==========================================
