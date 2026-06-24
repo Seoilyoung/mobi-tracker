@@ -163,7 +163,26 @@ function toggleEventInput() {
     if (!wrap.classList.contains('hidden') && editingEventId === null) { closeEventForm(); return; }
     resetEventForm(); wrap.classList.remove('hidden');
     let chipsHtml = `<div class="target-chars-wrap" id="chips-event-new">`; appState.characters.forEach(c => { chipsHtml += `<div class="char-chip selected" onclick="this.classList.toggle('selected')" data-char-id="${c.id}">${escapeHTML(c.name)}</div>`; }); chipsHtml += `</div>`;
-    wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}<div class="form-row"><input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100"><input type="text" id="input-ev-title" placeholder="이벤트 제목"></div><div class="form-row day-selector" id="event-day-selector">${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}</div><div class="form-row"><input type="text" id="input-ev-memo1" placeholder="메모 1"><input type="text" id="input-ev-memo2" placeholder="메모 2"></div><div class="form-actions"><button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button><button type="button" class="btn-submit" onclick="submitEvent()">추가</button></div></div>`;
+    
+    // ✨ URL 입력칸 추가됨
+    wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}
+        <div class="form-row">
+            <input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100">
+            <input type="text" id="input-ev-title" placeholder="이벤트 제목">
+        </div>
+        <div class="form-row">
+            <input type="text" id="input-ev-url" placeholder="링크 URL (선택사항)" class="w-100">
+        </div>
+        <div class="form-row day-selector" id="event-day-selector">${['월','화','수','목','금','토','일'].map(d => `<button type="button" class="day-btn" onclick="toggleEventDay(this, '${d}')">${d}</button>`).join('')}</div>
+        <div class="form-row">
+            <input type="text" id="input-ev-memo1" placeholder="메모 1">
+            <input type="text" id="input-ev-memo2" placeholder="메모 2">
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn-cancel" onclick="closeEventForm()">취소</button>
+            <button type="button" class="btn-submit" onclick="submitEvent()">추가</button>
+        </div>
+    </div>`;
     setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'end' }), 10);
 }
 
@@ -185,9 +204,12 @@ function cancelEditEvent() {
 function saveInlineEvent(id) {
     const period = document.getElementById(`inline-ev-period-${id}`).value.trim();
     const title = document.getElementById(`inline-ev-title-${id}`).value.trim();
+    let url = document.getElementById(`inline-ev-url-${id}`).value.trim(); // ✨ URL
     const memo1 = document.getElementById(`inline-ev-memo1-${id}`).value.trim();
     const memo2 = document.getElementById(`inline-ev-memo2-${id}`).value.trim();
+    
     if (!title) { showToast('이벤트 제목은 필수입니다.'); return; }
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
     
     const chipWrap = document.getElementById(`inline-chips-event-${id}`);
     const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId);
@@ -197,7 +219,7 @@ function saveInlineEvent(id) {
         const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
         const evIndex = appState.global.event.findIndex(e => e.id === id);
         if (evIndex > -1) {
-            appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, days: [...selectedEventDays], memo1, memo2, targetChars };
+            appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, url, days: [...selectedEventDays], memo1, memo2, targetChars };
         }
         editingEventId = null;
         selectedEventDays = [];
@@ -205,16 +227,29 @@ function saveInlineEvent(id) {
 }
 
 function submitEvent() {
-    const period = document.getElementById('input-ev-period').value.trim(); const title = document.getElementById('input-ev-title').value.trim(); const memo1 = document.getElementById('input-ev-memo1').value.trim(); const memo2 = document.getElementById('input-ev-memo2').value.trim(); 
+    const period = document.getElementById('input-ev-period').value.trim(); 
+    const title = document.getElementById('input-ev-title').value.trim(); 
+    let url = document.getElementById('input-ev-url').value.trim(); // ✨ URL
+    const memo1 = document.getElementById('input-ev-memo1').value.trim(); 
+    const memo2 = document.getElementById('input-ev-memo2').value.trim(); 
+    
     if (!title) { showToast('이벤트 제목은 필수입니다.'); return; } 
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; // 포맷팅
+
     const days = [...selectedEventDays];
-    const tid = editingEventId || 'new'; const chipWrap = document.getElementById(`chips-event-${tid}`); const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId); 
+    const tid = editingEventId || 'new'; 
+    const chipWrap = document.getElementById(`chips-event-${tid}`); 
+    const selectedCharIds = Array.from(chipWrap.querySelectorAll('.char-chip.selected')).map(c => c.dataset.charId); 
     if (selectedCharIds.length === 0) { showToast('최소 하나 이상의 캐릭터를 선택하세요.'); return; } 
     
     updateAppState(() => {
         const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
-        if (editingEventId) { const evIndex = appState.global.event.findIndex(e => e.id === editingEventId); if (evIndex > -1) { appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, days, memo1, memo2, targetChars }; } } 
-        else { appState.global.event.push({ id: genId(), period, title, days, memo1, memo2, targetChars }); }
+        if (editingEventId) { 
+            const evIndex = appState.global.event.findIndex(e => e.id === editingEventId); 
+            if (evIndex > -1) { appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, url, days, memo1, memo2, targetChars }; } 
+        } else { 
+            appState.global.event.push({ id: genId(), period, title, url, days, memo1, memo2, targetChars }); 
+        }
         closeEventForm(); 
     }, [renderTabs, renderGlobal, renderCharacterTasks]);
 }

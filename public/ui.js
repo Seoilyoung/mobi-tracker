@@ -146,6 +146,9 @@ function renderGlobal() {
                         <input type="text" id="inline-ev-period-${ev.id}" placeholder="기간" class="w-100" value="${escapeHTML(ev.period || '')}">
                         <input type="text" id="inline-ev-title-${ev.id}" placeholder="이벤트 제목" value="${escapeHTML(ev.title || '')}">
                     </div>
+                    <div class="form-row">
+                        <input type="text" id="inline-ev-url-${ev.id}" placeholder="링크 URL (선택사항)" class="w-100" value="${escapeHTML(ev.url || '')}">
+                    </div>
                     <div class="form-row day-selector">${daysHtml}</div>
                     <div class="form-row">
                         <input type="text" id="inline-ev-memo1-${ev.id}" placeholder="메모 1" value="${escapeHTML(ev.memo1 || '')}">
@@ -158,8 +161,17 @@ function renderGlobal() {
                 </div>
             </li>`;
         } else {
-            const statusClass = getEventStatusClass(ev.period); const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
-            eventHtml += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${escapeHTML(ev.period)}</span><span class="col-title">${escapeHTML(ev.title)}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${escapeHTML(ev.memo1)}</span><span class="col-memo2">${escapeHTML(ev.memo2)}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
+            const statusClass = getEventStatusClass(ev.period); 
+            const daysStr = (ev.days && ev.days.length > 0) ? `[${ev.days.join(', ')}]` : '';
+            
+            // ✨ 제목을 링크로 감싸기 로직
+            const safeTitle = escapeHTML(ev.title);
+            const safeUrl = escapeHTML(ev.url);
+            let titleHTML = ev.url 
+                ? `<a href="${safeUrl}" target="_blank" style="color:var(--text-main); text-decoration:none; font-weight:bold;">${safeTitle} 🔗</a>` 
+                : safeTitle;
+
+            eventHtml += `<li class="event-item"><div class="event-grid"><span class="col-period ${statusClass}">${escapeHTML(ev.period)}</span><span class="col-title">${titleHTML}</span><span class="col-days">${daysStr}</span><span class="col-memo1">${escapeHTML(ev.memo1)}</span><span class="col-memo2">${escapeHTML(ev.memo2)}</span><div class="col-actions"><button class="icon-btn edit-btn" onclick="editEvent('${ev.id}')" title="수정">✏️</button><button class="icon-btn delete-btn" onclick="deleteGlobal('event', '${ev.id}')" title="삭제">✕</button></div></div></li>`;
         }
     });
     document.getElementById('list-event').innerHTML = eventHtml;
