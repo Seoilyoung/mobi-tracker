@@ -142,24 +142,53 @@ function moveBlock(categoryId, type, idOrName, direction) {
         let customTasks = (activeChar.customTasks && activeChar.customTasks[categoryId]) ? activeChar.customTasks[categoryId].map(t => ({...t, isGlobal: false})) : []; 
         let allTasks = [...globalTasks, ...customTasks];
         
-        let isInnerTownTask = false; let targetTownName = null; 
-        if (type === 'task') { let t = allTasks.find(x => x.id === idOrName); if (t && t.town) { isInnerTownTask = true; targetTownName = t.town; } }
+        let isInnerTownTask = false; 
+        let targetTownName = null; 
+        if (type === 'task') { 
+            let t = allTasks.find(x => x.id === idOrName); 
+            if (t && t.town) { isInnerTownTask = true; targetTownName = t.town; } 
+        }
         
         let blocks = []; 
-        if (isInnerTownTask) { blocks = allTasks.filter(t => t.town === targetTownName).sort((a,b) => a.order - b.order); } 
-        else { let townMap = {}; allTasks.forEach(t => { if (t.town) townMap[t.town] = true; else blocks.push({ id: t.id, order: t.order, isTask: true, taskObj: t }); }); 
-            for (let tName in townMap) blocks.push({ id: tName, order: appState.global.towns[categoryId][tName].order, isTask: false }); blocks.sort((a,b) => a.order - b.order); }
-        
-        const idx = blocks.findIndex(b => b.id === idOrName); if (idx === -1) return; 
-        const targetIdx = direction === 'up' ? idx - 1 : idx + 1; if (targetIdx < 0 || targetIdx >= blocks.length) return;
-        
-        const curBlock = blocks[idx]; const tgtBlock = blocks[targetIdx]; const tempOrder = curBlock.order; curBlock.order = tgtBlock.order; tgtBlock.order = tempOrder;
-        
-        if (isInnerTownTask) { updateTaskOrder(categoryId, curBlock.id, curBlock.taskObj.isGlobal, curBlock.order); updateTaskOrder(categoryId, tgtBlock.id, tgtBlock.taskObj.isGlobal, tgtBlock.order); } 
-        else {
-            if (curBlock.isTask) updateTaskOrder(categoryId, curBlock.id, curBlock.taskObj.isGlobal, curBlock.order); else appState.global.towns[categoryId][curBlock.id].order = curBlock.order;
-            if (tgtBlock.isTask) updateTaskOrder(categoryId, tgtBlock.id, tgtBlock.taskObj.isGlobal, tgtBlock.order); else appState.global.towns[categoryId][tgtBlock.id].order = tgtBlock.order;
+        if (isInnerTownTask) { 
+            // 🌟 1. 마을 내부 숙제들도 외부와 똑같이 포장({ id, order, taskObj })해서 에러 방지
+            blocks = allTasks.filter(t => t.town === targetTownName)
+                             .sort((a,b) => (a.order || 0) - (b.order || 0))
+                             .map(t => ({ id: t.id, order: t.order || 0, isTask: true, taskObj: t }));
+        } else { 
+            let townMap = {}; 
+            allTasks.forEach(t => { 
+                if (t.town) townMap[t.town] = true; 
+                else blocks.push({ id: t.id, order: t.order || 0, isTask: true, taskObj: t }); 
+            }); 
+            for (let tName in townMap) { 
+                blocks.push({ id: tName, order: appState.global.towns[categoryId][tName]?.order || 0, isTask: false }); 
+            }
+            blocks.sort((a,b) => (a.order || 0) - (b.order || 0)); 
         }
+        
+        const idx = blocks.findIndex(b => b.id === idOrName); 
+        if (idx === -1) return; 
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1; 
+        if (targetIdx < 0 || targetIdx >= blocks.length) return;
+        
+        // 🌟 2. 강제로 10 단위의 고유 순서값을 덮어씌워 '동점자 버그(0과 0 교환)' 원천 차단
+        blocks.forEach((b, i) => b.order = (i + 1) * 10);
+
+        // 순서 교환
+        const tempOrder = blocks[idx].order; 
+        blocks[idx].order = blocks[targetIdx].order; 
+        blocks[targetIdx].order = tempOrder;
+        
+        // 데이터베이스에 반영
+        blocks.forEach(b => {
+            if (b.isTask) {
+                updateTaskOrder(categoryId, b.id, b.taskObj.isGlobal, b.order);
+            } else {
+                if (!appState.global.towns[categoryId][b.id]) appState.global.towns[categoryId][b.id] = { color: pastelColors[0] };
+                appState.global.towns[categoryId][b.id].order = b.order;
+            }
+        });
     }, [renderCharacterTasks]);
 }
 
