@@ -522,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-event-add-toggle')?.addEventListener('click', toggleEventInput);
     document.getElementById('btn-memo-add-toggle')?.addEventListener('click', () => toggleInput('memo'));
     document.getElementById('btn-memo-save')?.addEventListener('click', addMemo);
-    document.getElementById('input-memo')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') addMemo(); });
+    document.getElementById('input-memo')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addMemo(); } });
     document.getElementById('btn-noti-toggle')?.addEventListener('click', requestNotificationPermission);
     document.getElementById('btn-abyss-schedule')?.addEventListener('click', toggleAbyssSchedule);
     document.getElementById('btn-abyss-edit')?.addEventListener('click', () => toggleInput('abyss'));

@@ -182,7 +182,7 @@ function renderGlobal() {
             memoHtml += `<li class="task-item edit-mode" style="padding: 0; border: none; background: transparent;">
                 <div class="inline-form-box" style="margin: 0; box-shadow: none;">
                     <div class="form-row">
-                        <input type="text" id="inline-memo-${memo.id}" value="${escapeHTML(memo.label)}" style="flex: 1;" onkeypress="if(event.key==='Enter') saveInlineMemo('${memo.id}')">
+                        <textarea id="inline-memo-${memo.id}" style="flex: 1; resize: vertical; min-height: 60px;" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); saveInlineMemo('${memo.id}'); }">${escapeHTML(memo.label)}</textarea>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-cancel" onclick="cancelEditMemo()">취소</button>
@@ -192,7 +192,9 @@ function renderGlobal() {
             </li>`;
         } else {
             memoHtml += `<li class="task-item">
-                <div class="task-content"><span>• ${escapeHTML(memo.label)}</span></div>
+                <div class="task-content">
+                    <span style="white-space: pre-wrap; word-break: break-word; line-height: 1.4;">• ${escapeHTML(memo.label)}</span>
+                </div>
                 <div class="action-btns">
                     <button class="icon-btn edit-btn" onclick="editMemo('${memo.id}')" title="수정">✏️</button>
                     <button class="icon-btn delete-btn" onclick="deleteGlobal('memo', '${memo.id}')">✕</button>
