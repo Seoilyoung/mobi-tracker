@@ -98,18 +98,17 @@ function renderGlobal() {
         appState.global.notices.forEach(n => {
             if (editingNoticeId === n.id) {
                 // [수정 모드] 회색 인라인 폼
-                noticeHtml += `<li class="task-item edit-mode" style="padding: 0; border: none; background: transparent;">
-                    <div class="inline-form-box" style="margin: 0; box-shadow: none;">
-                        <div class="form-row">
-                            <input type="text" id="inline-notice-title-${n.id}" placeholder="공지 제목" value="${escapeHTML(n.title)}" style="flex: 1;">
-                            <input type="text" id="inline-notice-url-${n.id}" placeholder="링크 URL (선택)" value="${escapeHTML(n.url || '')}" style="flex: 1;">
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn-cancel" onclick="cancelEditNotice()">취소</button>
-                            <button type="button" class="btn-submit edit" onclick="saveInlineNotice('${n.id}')">수정</button>
-                        </div>
-                    </div>
-                </li>`;
+                memoHtml += `<li class="task-item edit-mode" style="padding: 0; border: none; background: transparent;">
+                                <div class="inline-form-box" style="margin: 0; box-shadow: none;">
+                                    <div class="form-row">
+                                        <textarea id="inline-memo-${memo.id}" style="flex: 1; resize: none; min-height: 60px;" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); saveInlineMemo('${memo.id}'); }">${escapeHTML(memo.label)}</textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="button" class="btn-cancel" onclick="cancelEditMemo()">취소</button>
+                                        <button type="button" class="btn-submit edit" onclick="saveInlineMemo('${memo.id}')">수정</button>
+                                    </div>
+                                </div>
+                            </li>`;
             } else {
                 // [일반 모드] (수정 ✏️ 버튼 추가)
                 const safeTitle = escapeHTML(n.title);
