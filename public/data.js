@@ -34,25 +34,13 @@ const categoriesInfo = [
     { id: 'weekly-trade', title: '⚖️ 주간 물물 교환' }
 ];
 
-const DEFAULT_STATE = {
-    global: {
-        lastDailyReset: 0, lastWeeklyReset: 0,
-        abyss: { baseTime: "" }, notices: [],
-        event: [{ id: genId(), period: "06.01 ~ 06.30", title: "샘플 이벤트", days: ['토', '일'], memo1: "", memo2: "", targetChars: ['all'] }],
-        memo: [{ id: genId(), label: "내일 길드 레이드 20시" }],
-        towns: { 'daily': { '티르코네일': { order: 1000, color: '#4a90e2' } }, 'daily-trade': { '티르코네일': { order: 1000, color: '#ff8787' } }, 'weekly': {}, 'weekly-trade': {} },
-        sharedChecks: {}, 
-        tasksTemplate: { 
-            'daily': [{ id: "d1", label: "일일 퀘스트 완료", town: "티르코네일", isShared: false, order: 1, isPaused: false }], 
-            'daily-trade': [{ id: "dt1", type: "trade", town: "티르코네일", npc: "엔델리온", fromItem: "우유", fromQty: 10, toItem: "마나허브", toQty: 2, isShared: false, order: 1, isPaused: false }], 
-            'weekly': [{ id: "w1", label: "주간 레이드 참여", isShared: false, order: 1, isPaused: false }], 
-            'weekly-trade': [] 
-        }
-    },
-    characters: Array.from({length: 6}, (_, i) => ({ 
-        id: `char-${i+1}`, name: `캐릭터 ${i+1}`, checks: {}, customTasks: { 'daily': [], 'daily-trade': [], 'weekly': [], 'weekly-trade': [] }, hiddenTasks: []
-    })),
-    activeTabId: "char-1"
+let DEFAULT_STATE = null;
+
+// 만약 템플릿 문서가 삭제됐을 경우를 대비한 최소 뼈대
+const FALLBACK_STATE = { 
+    global: { notices: [], event: [], memo: [], towns: { 'daily': {}, 'daily-trade': {}, 'weekly': {}, 'weekly-trade': {} }, tasksTemplate: { 'daily': [], 'daily-trade': [], 'weekly': [], 'weekly-trade': [] }, sharedChecks: {}, abyss: { baseTime: "" } }, 
+    characters: [], 
+    activeTabId: "" 
 };
 
 let uiState = { showCompleted: { 'daily': false, 'daily-trade': false, 'weekly': false, 'weekly-trade': false } };
@@ -65,11 +53,29 @@ let countdownInterval = null;
 let notifiedAbyssTime = null;
 
 // ==========================================
-// 3. 인증 및 계정 연동
+// 3. 인증 및 초기 데이터 로드 (Firebase 템플릿 적용)
 // ==========================================
-firebase.auth().onAuthStateChanged((user) => {
+firebase.auth().onAuthStateChanged(async (user) => {
     if (user) {
+        document.getElementById('landing-page')?.classList.add('hidden');
+        
+        // 🌟 신규/기존 유저 상관없이 아직 DEFAULT_STATE가 없다면 파이어베이스에서 템플릿을 읽어옴
+        if (!DEFAULT_STATE) {
+            try {
+                const templateSnap = await db.collection("mabi_tracker").doc("DEFAULT_TEMPLATE").get();
+                if (templateSnap.exists) {
+                    DEFAULT_STATE = templateSnap.data(); // DB 템플릿 적용
+                } else {
+                    DEFAULT_STATE = JSON.parse(JSON.stringify(FALLBACK_STATE)); 
+                }
+            } catch (error) {
+                console.error("템플릿 로드 실패, 기본 뼈대 사용:", error);
+                DEFAULT_STATE = JSON.parse(JSON.stringify(FALLBACK_STATE));
+            }
+        }
+
         docRef = db.collection("mabi_tracker").doc(user.uid);
+        
         const isLinked = user.providerData.some(p => p.providerId === 'google.com');
         const authBtn = document.getElementById('auth-btn');
         if (authBtn) {
@@ -79,12 +85,32 @@ firebase.auth().onAuthStateChanged((user) => {
         
         loadData();
     } else {
-        firebase.auth().signInAnonymously().catch(error => {
-            console.error("익명 로그인 실패:", error);
-            document.getElementById('loading-spinner')?.classList.add('fade-out');
-        });
+        // 로그인 정보가 없으면 랜딩 페이지 표시
+        document.getElementById('loading-spinner')?.classList.add('fade-out');
+        document.getElementById('landing-page')?.classList.remove('hidden');
     }
 });
+
+// 🌟 [신규 추가] '새로 시작하기' 버튼 누를 때 동작
+function startNewAnonymous() {
+    document.getElementById('loading-spinner')?.classList.remove('fade-out'); // 로딩 켜기
+    firebase.auth().signInAnonymously().catch(error => {
+        console.error("익명 로그인 실패:", error);
+        document.getElementById('loading-spinner')?.classList.add('fade-out');
+        showToast("신규 생성 중 오류가 발생했습니다.");
+    });
+}
+
+// 🌟 [신규 추가] '구글 계정 로그인' 버튼 누를 때 동작
+function loginExistingGoogle() {
+    document.getElementById('loading-spinner')?.classList.remove('fade-out'); // 로딩 켜기
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch((error) => {
+        console.error("구글 로그인 실패:", error);
+        document.getElementById('loading-spinner')?.classList.add('fade-out');
+        showToast("로그인 중 오류가 발생했습니다. 브라우저 팝업 차단을 확인해 주세요.");
+    });
+}
 
 function linkGoogleAccount() {
     const user = firebase.auth().currentUser;
@@ -107,20 +133,15 @@ function linkGoogleAccount() {
 // 4. 데이터 로드 및 저장 통제 (사용자 조작 락 해제 및 무한 로딩 수정)
 // ==========================================
 function loadData() {
-    // 🌟 파이어베이스가 응답이 없더라도 3초 뒤엔 무조건 자물쇠를 풀고 강제 렌더링!
+    // (상단 setTimeout 부분은 그대로 유지)
     setTimeout(() => { 
         if (!isServerSynced) {
             isServerSynced = true; 
-            
-            // 만약 아직 데이터를 못 받아서 빈손이라면, 기본 뼈대를 채워 넣고 화면을 그립니다.
             if (!appState) {
                 appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
                 renderAll();
             }
-            
             checkAndApplyAutoResets(); 
-            
-            // 영원히 돌고 있던 로딩 동그라미를 강제로 치워버립니다.
             document.getElementById('loading-spinner')?.classList.add('fade-out');
             document.querySelector('.container')?.classList.add('loaded');
         }
@@ -128,7 +149,6 @@ function loadData() {
 
     docRef.onSnapshot((doc) => {
         const isFromCache = doc.metadata.fromCache;
-        
         if (!isFromCache) {
             isServerSynced = true; 
         }
@@ -142,14 +162,18 @@ function loadData() {
         appState = newData;
         cleanupEmptyTowns(); 
         
+        // 🌟 [순서 수정] 뼈대(DOM)를 먼저 그려서 에러를 방지합니다.
+        renderAll();
+        
+        // 🌟 [순서 수정] 화면이 준비된 상태에서 초기화 검사를 진행합니다.
         checkAndApplyAutoResets(); 
 
         if (countdownInterval) clearInterval(countdownInterval);
         countdownInterval = setInterval(updateAbyssCountdown, 1000);
         
-        renderAll();
+        // 🌟 (기존에 맨 밑에 있던 renderAll(); 은 위로 올렸으므로 여기서 삭제합니다)
 
-        // 정상적으로 서버에서 데이터를 받았을 때도 스피너 제거
+        // 정상적으로 서버에서 데이터를 받았을 때 스피너 제거
         document.getElementById('loading-spinner')?.classList.add('fade-out');
         document.querySelector('.container')?.classList.add('loaded');
     }, (error) => {
@@ -157,7 +181,6 @@ function loadData() {
         document.getElementById('loading-spinner')?.classList.add('fade-out');
     });
 }
-
 function saveData() { 
     // 🌟 수동 저장 제한 해제! 사용자가 버튼 누르면 자물쇠 상관없이 즉각 저장
     if (!appState || !docRef) return; 

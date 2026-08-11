@@ -543,4 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('char-modal')?.addEventListener('click', function(e) { if (e.target === this) closeCharModal(); });
     document.getElementById('auth-btn')?.addEventListener('click', () => { if (typeof linkGoogleAccount === 'function') linkGoogleAccount(); });
     document.getElementById('theme-toggle')?.addEventListener('click', () => { if (typeof toggleDarkMode === 'function') toggleDarkMode(); });
+    document.getElementById('btn-start-new')?.addEventListener('click', () => {if (typeof startNewAnonymous === 'function') startNewAnonymous();});
+    document.getElementById('btn-login-exist')?.addEventListener('click', () => {if (typeof loginExistingGoogle === 'function') loginExistingGoogle();});
 });
