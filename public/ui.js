@@ -142,6 +142,11 @@ function renderGlobal() {
                 <div class="inline-form-box" style="margin: 0; box-shadow: none;">
                     ${chipsHtml}
                     <div class="form-row">
+                        <label class="checkbox-label" title="체크 해제 시 계정 전체 공유됩니다">
+                            <input type="checkbox" id="inline-ev-indiv-${ev.id}" ${ev.isShared ? '' : 'checked'}> 개별
+                        </label>
+                    </div>
+                    <div class="form-row">
                         <input type="text" id="inline-ev-period-${ev.id}" placeholder="기간" class="w-100" value="${escapeHTML(ev.period || '')}">
                         <input type="text" id="inline-ev-title-${ev.id}" placeholder="이벤트 제목" value="${escapeHTML(ev.title || '')}">
                     </div>
@@ -278,7 +283,7 @@ function renderCharacterTasks() {
                 const status = getEventStatusClass(ev.period); const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(activeChar.id);
                 // 🌟 핵심 수정: '진행 중'이거나 '마감 임박'인 경우 모두 일일 숙제 목록에 추가
                 if ((status === 'ev-status-ongoing' || status === 'ev-status-closing') && ev.days && ev.days.includes(todayDay) && isForThisChar) { 
-                    blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${escapeHTML(ev.title)}`, type: 'normal', isEventInject: true } }); 
+                    blocks.unshift({ type: 'task', order: -99999, task: { id: `evtask-${ev.id}`, label: `🎉 [이벤트] ${escapeHTML(ev.title)}`, type: 'normal', isEventInject: true, isShared: ev.isShared } }); 
                 }
             });
         }

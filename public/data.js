@@ -225,7 +225,7 @@ function checkAndApplyAutoResets() {
         appState.global.lastDailyReset = lastDaily.getTime(); needsSave = true;
         for (let tid in appState.global.sharedChecks) {
             let isDaily = ['daily', 'daily-trade'].some(cat => appState.global.tasksTemplate[cat].some(t => t.id === tid) || appState.characters.some(c => c.customTasks[cat].some(t => t.id === tid)));
-            if (isDaily) delete appState.global.sharedChecks[tid];
+            if (isDaily|| tid.startsWith('evtask-')) delete appState.global.sharedChecks[tid];
         }
         appState.characters.forEach(char => {
             ['daily', 'daily-trade'].forEach(cat => { appState.global.tasksTemplate[cat].forEach(t => delete char.checks[t.id]); if (char.customTasks[cat]) char.customTasks[cat].forEach(t => delete char.checks[t.id]); });
@@ -297,7 +297,17 @@ function getCharCompletionStatus(char) {
         if (cat.id === 'daily') {
             appState.global.event.forEach(ev => {
                 const status = getEventStatusClass(ev.period); const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(char.id);
-                if ((status === 'ev-status-ongoing' || status === 'ev-status-closing') && ev.days && ev.days.includes(todayDay) && isForThisChar) { dailyTotal++; if (!!char.checks[`evtask-${ev.id}`]) dailyChecked++; }
+                if (cat.id === 'daily') {
+            appState.global.event.forEach(ev => {
+                const status = getEventStatusClass(ev.period); const isForThisChar = !ev.targetChars || ev.targetChars.includes('all') || ev.targetChars.includes(char.id);
+                if ((status === 'ev-status-ongoing' || status === 'ev-status-closing') && ev.days && ev.days.includes(todayDay) && isForThisChar) { 
+                    dailyTotal++; 
+                    // ✨ 공유 여부에 따라 체크 내역을 다르게 읽어오도록 수정
+                    const isEvChecked = ev.isShared ? !!appState.global.sharedChecks[`evtask-${ev.id}`] : !!char.checks[`evtask-${ev.id}`];
+                    if (isEvChecked) dailyChecked++; 
+                }
+            });
+        }
             });
         }
         appState.global.tasksTemplate[cat.id].forEach(t => {

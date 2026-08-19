@@ -217,6 +217,9 @@ function toggleEventInput() {
     // ✨ URL 입력칸 추가됨
     wrap.innerHTML = `<div class="inline-form-box">${chipsHtml}
         <div class="form-row">
+            <label class="checkbox-label" title="체크 해제 시 계정 공유"><input type="checkbox" id="input-ev-indiv" checked> 개별</label>
+        </div>
+        <div class="form-row">
             <input type="text" id="input-ev-period" placeholder="기간 (예: ~6.30 또는 12.20~01.10)" class="w-100">
             <input type="text" id="input-ev-title" placeholder="이벤트 제목">
         </div>
@@ -258,6 +261,8 @@ function saveInlineEvent(id) {
     const memo1 = document.getElementById(`inline-ev-memo1-${id}`).value.trim();
     const memo2 = document.getElementById(`inline-ev-memo2-${id}`).value.trim();
     
+    const isShared = !document.getElementById(`inline-ev-indiv-${id}`).checked;
+
     if (!title) { showToast('이벤트 제목은 필수입니다.'); return; }
     if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
     
@@ -269,7 +274,7 @@ function saveInlineEvent(id) {
         const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
         const evIndex = appState.global.event.findIndex(e => e.id === id);
         if (evIndex > -1) {
-            appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, url, days: [...selectedEventDays], memo1, memo2, targetChars };
+            appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, url, days: [...selectedEventDays], memo1, memo2, targetChars, isShared };
         }
         editingEventId = null;
         selectedEventDays = [];
@@ -282,6 +287,8 @@ function submitEvent() {
     let url = document.getElementById('input-ev-url').value.trim(); // ✨ URL
     const memo1 = document.getElementById('input-ev-memo1').value.trim(); 
     const memo2 = document.getElementById('input-ev-memo2').value.trim(); 
+
+    const isShared = !document.getElementById('input-ev-indiv').checked;
     
     if (!title) { showToast('이벤트 제목은 필수입니다.'); return; } 
     if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; // 포맷팅
@@ -296,9 +303,9 @@ function submitEvent() {
         const targetChars = selectedCharIds.length === appState.characters.length ? ['all'] : selectedCharIds;
         if (editingEventId) { 
             const evIndex = appState.global.event.findIndex(e => e.id === editingEventId); 
-            if (evIndex > -1) { appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, url, days, memo1, memo2, targetChars }; } 
+            if (evIndex > -1) { appState.global.event[evIndex] = { ...appState.global.event[evIndex], period, title, url, days, memo1, memo2, targetChars, isShared }; } 
         } else { 
-            appState.global.event.push({ id: genId(), period, title, url, days, memo1, memo2, targetChars }); 
+            appState.global.event.push({ id: genId(), period, title, url, days, memo1, memo2, targetChars, isShared }); 
         }
         closeEventForm(); 
     }, [renderTabs, renderGlobal, renderCharacterTasks]);
