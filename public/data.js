@@ -289,7 +289,9 @@ function getEventStatusClass(periodStr) {
 
 function getCharCompletionStatus(char) {
     let dailyTotal = 0, dailyChecked = 0; let weeklyTotal = 0, weeklyChecked = 0;
-    const todayDay = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+    const now = new Date();
+    if (now.getHours() < 6) { now.setDate(now.getDate() - 1); }
+    const todayDay = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()];
     categoriesInfo.forEach(cat => {
         const isDaily = cat.id.includes('daily');
         if (cat.id === 'daily') {

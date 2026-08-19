@@ -260,7 +260,9 @@ function renderTaskCards() {
 
 function renderCharacterTasks() {
     const activeChar = appState.characters.find(c => c.id === appState.activeTabId); if (!activeChar) return;
-    const todayDay = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+    const now = new Date();
+    if (now.getHours() < 6) { now.setDate(now.getDate() - 1); }
+    const todayDay = ['일', '월', '화', '수', '목', '금', '토'][now.getDay()];
     
     categoriesInfo.forEach(cat => {
         let globalTasks = appState.global.tasksTemplate[cat.id].filter(t => !activeChar.hiddenTasks.includes(t.id)).map(t => ({...t, isGlobal: true}));
