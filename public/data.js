@@ -133,21 +133,8 @@ function linkGoogleAccount() {
 // 4. 데이터 로드 및 저장 통제 (사용자 조작 락 해제 및 무한 로딩 수정)
 // ==========================================
 function loadData() {
-    // (상단 setTimeout 부분은 그대로 유지)
-    setTimeout(() => { 
-        if (!isServerSynced) {
-            isServerSynced = true; 
-            if (!appState) {
-                appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
-                renderAll();
-            }
-            checkAndApplyAutoResets(); 
-            document.getElementById('loading-spinner')?.classList.add('fade-out');
-            document.querySelector('.container')?.classList.add('loaded');
-        }
-    }, 3000);
-
     docRef.onSnapshot((doc) => {
+        if (savePending || (!doc.exists && doc.metadata.fromCache)) return;
         const isFromCache = doc.metadata.fromCache;
         if (!isFromCache) {
             isServerSynced = true; 
@@ -160,6 +147,7 @@ function loadData() {
         }
 
         appState = newData;
+        acceptSnapshot(appState);
         cleanupEmptyTowns(); 
         
         // 🌟 [순서 수정] 뼈대(DOM)를 먼저 그려서 에러를 방지합니다.
@@ -183,13 +171,14 @@ function loadData() {
 }
 function saveData() { 
     // 🌟 수동 저장 제한 해제! 사용자가 버튼 누르면 자물쇠 상관없이 즉각 저장
-    if (!appState || !docRef) return; 
+    if (!appState || !docRef || savePending || !isServerSynced) return; 
     cleanupEmptyTowns(); 
-    docRef.set(appState).catch(err => console.error("Firebase 저장 에러: ", err)); 
+    return commitEdits(copyState(syncBaseline || appState), copyState(appState)); 
 }
 
 function updateAppState(updaterFn, renderFns = [renderAll]) {
     // 🌟 수동 갱신 제한 해제! 토스트 메시지 띄우지 않고 바로 명령 수행
+    if(savePending || !isServerSynced) { showToast("연결 또는 저장이 완료된 뒤 다시 시도해 주세요."); return; }
     if (updaterFn) updaterFn(); 
     saveData(); 
     if (renderFns && renderFns.length > 0) { renderFns.forEach(fn => fn()); } 
@@ -210,7 +199,7 @@ function cleanupEmptyTowns() {
 // ==========================================
 function checkAndApplyAutoResets() {
     // 🌟 자동 초기화는 여전히 자물쇠(isServerSynced)가 풀려야만 작동 (데이터 롤백 대참사 방어)
-    if (!appState || !appState.global || !isServerSynced) return;
+    if (!appState || !appState.global || !isServerSynced || savePending) return;
 
     const now = new Date(); let lastDaily = new Date(now);
     if (now.getHours() < 6) lastDaily.setDate(lastDaily.getDate() - 1);
